@@ -3,6 +3,7 @@ version: '3.8'
 services:
     db:
         image: postgres:18.1-alpine
+        container_name: db
         restart: unless-stopped
         ports:
             - 5434:${POSTGRES_PORT}
@@ -11,6 +12,7 @@ services:
 
     backend:
         image: renting_management
+        container_name: backend
         build: .
         # Let it sleep, we will set it inside docker container
         command: sleep infinity
@@ -18,5 +20,7 @@ services:
             - ./project:/project/
         ports:
             - 8100:8100
+        env_file:
+            - .env
         depends_on:
             - db
