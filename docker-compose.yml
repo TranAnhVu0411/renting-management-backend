@@ -6,9 +6,9 @@ services:
         container_name: db
         restart: unless-stopped
         ports:
-            - 5434:${POSTGRES_PORT}
+            - 5434:5432
         env_file:
-            - .env
+            - ./env/.env.db
         volumes:
             - pg_data:/var/lib/postgresql/data
             # Store running script when initialize db container
@@ -25,7 +25,7 @@ services:
         ports:
             - 8100:8100
         env_file:
-            - .env
+            - ./env/.env
         depends_on:
             - db
 
