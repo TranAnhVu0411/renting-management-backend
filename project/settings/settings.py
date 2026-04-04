@@ -145,16 +145,22 @@ AUTHENTICATION_BACKENDS = (
 # For development
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 # Allauth setting
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = False
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
+ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND = True
+# Verification code configuration
+# https://docs.allauth.org/en/latest/common/configuration.html
+ALLAUTH_USER_CODE_FORMAT = {
+    "numeric": True,
+    "dashed": False,
+    "length": 6,
+}
 
 HEADLESS_ONLY = True
-HEADLESS_FRONTEND_URLS = {
-    "account_signup": "http://localhost:5173/auth/signup",
-    "account_confirm_email": "http://localhost:5173/auth/verify-email/{key}",
-}
 
 # CORS setting
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
