@@ -1,4 +1,5 @@
 from django.contrib import admin
+from unfold.admin import ModelAdmin
 from .models import Tenant
 
 
@@ -13,7 +14,7 @@ def activate_tenant(modeladmin, request, queryset):
 
 
 @admin.register(Tenant)
-class TenantAdmin(admin.ModelAdmin):
+class TenantAdmin(ModelAdmin):
     list_display = (
         "name",
         "identity_card_number",
