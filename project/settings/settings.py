@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'allauth.headless',
     'users',
     'tenants',
+    'properties',
 ]
 
 MIDDLEWARE = [
