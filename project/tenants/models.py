@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 
+
 class Tenant(models.Model):
     class Meta:
         ordering = ["name"]
