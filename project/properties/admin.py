@@ -1,6 +1,9 @@
 from django import forms
 from django.contrib import admin
+from django.urls import reverse
+from django.shortcuts import redirect
 from unfold.admin import ModelAdmin
+from unfold.decorators import action
 
 from .models import Room
 
@@ -46,6 +49,7 @@ class RoomAdmin(ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = ("room_id",)
+    actions_row = ["delete_room_row"]
     form = RoomAdminForm
     conditional_fields = {"co_tenant_maximum": "allow_co_tenant == true"}
     fieldsets = (
@@ -67,3 +71,13 @@ class RoomAdmin(ModelAdmin):
             },
         ),
     )
+
+    @action(
+        description="Delete room",
+        icon="delete_forever",
+    )
+    def delete_room_row(self, request, object_id):
+        room = Room.objects.get(pk=object_id)
+        room.delete()
+
+        return redirect(reverse("admin:properties_room_changelist"))
