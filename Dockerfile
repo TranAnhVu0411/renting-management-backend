@@ -1,4 +1,4 @@
-FROM python:3.14.2-slim
+FROM python:3.12-slim
 
 # Fix bug: https://stackoverflow.com/a/67404591
 RUN apt-get update \
