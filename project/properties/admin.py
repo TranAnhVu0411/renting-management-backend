@@ -1,7 +1,38 @@
+from django import forms
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
 from .models import Room
+
+
+class RoomAdminForm(forms.ModelForm):
+    class Meta:
+        model = Room
+        fields = "__all__"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        area = cleaned_data.get("area")
+        if area is not None and area <= 0:
+            self.add_error(
+                "area",
+                "Area must be greater than 0.",
+            )
+
+        allow_co_tenant = cleaned_data.get("allow_co_tenant")
+        co_tenant_maximum = cleaned_data.get("co_tenant_maximum")
+
+        if allow_co_tenant and co_tenant_maximum == 0:
+            self.add_error(
+                "co_tenant_maximum",
+                "Co-tenant maximum must be greater than 0 "
+                "when co-tenants are allowed.",
+            )
+
+        if not allow_co_tenant:
+            cleaned_data["co_tenant_maximum"] = 0
+
+        return cleaned_data
 
 
 @admin.register(Room)
@@ -15,6 +46,7 @@ class RoomAdmin(ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = ("room_id",)
+    form = RoomAdminForm
     conditional_fields = {"co_tenant_maximum": "allow_co_tenant == true"}
     fieldsets = (
         (None, {"fields": ("room_id", "area")}),
