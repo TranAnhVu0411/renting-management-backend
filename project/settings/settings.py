@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import os
+from django.templatetags.static import static
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -33,12 +34,14 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     "unfold",
+    "unfold.contrib.forms",
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     'corsheaders',
     'allauth',
     'allauth.account',
@@ -46,6 +49,7 @@ INSTALLED_APPS = [
     'users',
     'tenants',
     'properties',
+    'contracts',
 ]
 
 MIDDLEWARE = [
@@ -79,6 +83,11 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'settings.wsgi.application'
+
+# Static
+STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "settings" / "static"]
+STATIC_ROOT = BASE_DIR / "static"
 
 
 # Database
@@ -136,6 +145,12 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+UNFOLD = {
+    "STYLES": [
+        lambda request: static("css/admin_custom.css"),
+    ],
+}
 
 # Source - https://stackoverflow.com/a/30173694
 AUTHENTICATION_BACKENDS = (
