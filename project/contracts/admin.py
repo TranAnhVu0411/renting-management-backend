@@ -6,6 +6,7 @@ from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget
 
 from .models import Tenancy, TenancyTenant, TenancyService
+from properties.models import Room
 
 
 class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
@@ -16,8 +17,17 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
             return
 
         primary_count = 0
+        cotenant_count = 0
         is_primary_tenant_active = False
         active_count = 0
+
+        room_id = self.data.get("room")
+        if not room_id:
+            room_id = getattr(self.instance, "room_id", None)
+        try:
+            room = Room.objects.get(pk=room_id)
+        except (Room.DoesNotExist, ValueError, TypeError):
+            return
 
         for form in self.forms:
             if self.can_delete and self._should_delete_form(form):
@@ -25,14 +35,19 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
             if not form.cleaned_data:
                 continue
 
-            tenant = form.cleaned_data.get("tenant")
+            data = form.cleaned_data
+            if not data or not data.get("tenant"):
+                continue
+
             role = form.cleaned_data.get("role")
             active = form.cleaned_data.get("active")
 
-            if tenant and role == "primary":
+            if role == "primary":
                 primary_count += 1
                 if active:
                     is_primary_tenant_active = True
+            if role == "co-tenant":
+                cotenant_count += 1
             if active:
                 active_count += 1
 
@@ -48,6 +63,15 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
         if not is_primary_tenant_active:
             raise ValidationError("The primary tenant must be active.")
 
+        if room.allow_co_tenant:
+            if cotenant_count > room.co_tenant_maximum:
+                raise ValidationError(
+                    f"Co-tenants cannot exceed the maximum of {room.co_tenant_maximum} for this room."
+                )
+        else:
+            if cotenant_count > 0:
+                raise ValidationError("Co-tenants are not allowed for this room.")
+
 
 class TenancyTenantInline(TabularInline):
     model = TenancyTenant
@@ -56,6 +80,7 @@ class TenancyTenantInline(TabularInline):
     autocomplete_fields = ("tenant",)
     fields = ("tenant", "role", "active")
     show_change_link = True
+    show_title = False
 
 
 class TenancyServiceInlineForm(forms.ModelForm):
