@@ -180,6 +180,13 @@ ALLAUTH_USER_CODE_FORMAT = {
 
 HEADLESS_ONLY = True
 
+# Django REST framework settings
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+}
+
 # CORS setting
 CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]
 CORS_ALLOW_CREDENTIALS = True

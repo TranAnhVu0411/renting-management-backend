@@ -1,4 +1,7 @@
 from django import forms
+from django.urls import path
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -183,3 +186,7 @@ class TenancyAdmin(ModelAdmin):
             "widget": ArrayWidget,
         }
     }
+    change_form_before_template = ("admin/tenancy/room_conditions.html",)
+
+    class Media:
+        js = ("admin/js/room_condition.js",)
