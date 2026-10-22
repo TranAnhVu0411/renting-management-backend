@@ -67,3 +67,19 @@ class TenantAdmin(ModelAdmin):
         tenant.delete()
 
         return redirect(reverse("admin:tenants_tenant_changelist"))
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, may_have_duplicates = super().get_search_results(
+            request,
+            queryset,
+            search_term,
+        )
+
+        if (
+            request.GET.get("app_label") == "contracts"
+            and request.GET.get("model_name") == "tenancytenant"
+            and request.GET.get("field_name") == "tenant"
+        ):
+            queryset = queryset.filter(active=True)
+
+        return queryset, may_have_duplicates

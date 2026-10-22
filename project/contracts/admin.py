@@ -1,7 +1,4 @@
 from django import forms
-from django.urls import path
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -187,6 +184,12 @@ class TenancyAdmin(ModelAdmin):
         }
     }
     change_form_before_template = ("admin/tenancy/room_conditions.html",)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "room":
+            kwargs["queryset"] = Room.objects.filter(status="empty")
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     class Media:
         js = ("admin/js/room_condition.js",)
