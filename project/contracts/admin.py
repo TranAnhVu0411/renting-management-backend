@@ -20,14 +20,7 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
         cotenant_count = 0
         is_primary_tenant_active = False
         active_count = 0
-
-        room_id = self.data.get("room")
-        if not room_id:
-            room_id = getattr(self.instance, "room_id", None)
-        try:
-            room = Room.objects.get(pk=room_id)
-        except (Room.DoesNotExist, ValueError, TypeError):
-            return
+        seen_tenant_ids = set()
 
         for form in self.forms:
             if self.can_delete and self._should_delete_form(form):
@@ -36,8 +29,19 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
                 continue
 
             data = form.cleaned_data
-            if not data or not data.get("tenant"):
+            tenant = data.get("tenant")
+            if not tenant:
                 continue
+
+            if tenant.pk in seen_tenant_ids:
+                form.add_error(
+                    "tenant",
+                    ValidationError(
+                        "This tenant has already been selected " "in another line."
+                    ),
+                )
+            else:
+                seen_tenant_ids.add(tenant.pk)
 
             role = form.cleaned_data.get("role")
             active = form.cleaned_data.get("active")
@@ -63,6 +67,13 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
         if not is_primary_tenant_active:
             raise ValidationError("The primary tenant must be active.")
 
+        room_id = self.data.get("room")
+        if not room_id:
+            room_id = getattr(self.instance, "room_id", None)
+        try:
+            room = Room.objects.get(pk=room_id)
+        except (Room.DoesNotExist, ValueError, TypeError):
+            return
         if room.allow_co_tenant:
             if cotenant_count > room.co_tenant_maximum:
                 raise ValidationError(
@@ -81,6 +92,9 @@ class TenancyTenantInline(TabularInline):
     fields = ("tenant", "role", "active")
     show_change_link = True
     show_title = False
+
+    class Media:
+        js = ("admin/js/tenancy_tenant_autocomplete.js",)
 
 
 class TenancyServiceInlineForm(forms.ModelForm):

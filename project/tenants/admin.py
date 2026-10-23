@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 from unfold.admin import ModelAdmin
 from unfold.decorators import action
 
@@ -81,5 +82,22 @@ class TenantAdmin(ModelAdmin):
             and request.GET.get("field_name") == "tenant"
         ):
             queryset = queryset.filter(active=True)
+
+            raw_ids = request.GET.get("exclude_tenant_ids", "")
+            tenant_ids = []
+
+            for value in raw_ids.split(","):
+                if not value:
+                    continue
+
+                try:
+                    tenant_ids.append(
+                        Tenant._meta.pk.to_python(value)
+                    )
+                except (ValidationError, ValueError, TypeError):
+                    continue
+
+            if tenant_ids:
+                queryset = queryset.exclude(pk__in=tenant_ids)
 
         return queryset, may_have_duplicates
