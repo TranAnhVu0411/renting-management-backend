@@ -116,9 +116,20 @@ class TenancyServiceInlineForm(forms.ModelForm):
         return cleaned_data
 
 
+class TenancyServiceInlineFormSet(forms.models.BaseInlineFormSet):
+    def _construct_form(self, i, **kwargs):
+        form = super()._construct_form(i, **kwargs)
+
+        if i == 0:
+            form.empty_permitted = False
+
+        return form
+
+
 class TenancyServiceInline(StackedInline):
     model = TenancyService
     form = TenancyServiceInlineForm
+    formset = TenancyServiceInlineFormSet
     can_delete = False
     show_change_link = False
     show_title = False
