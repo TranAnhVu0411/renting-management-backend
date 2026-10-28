@@ -1,4 +1,5 @@
 from django import forms
+from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -187,6 +188,7 @@ class TenancyAdmin(ModelAdmin):
         TenancyServiceInline,
     ]
     list_display = (
+        "primary_tenant",
         "room",
         "start_date",
         "end_date",
@@ -194,7 +196,7 @@ class TenancyAdmin(ModelAdmin):
     )
     list_filter = ("status",)
     search_fields = (
-        "tenant__name",
+        "tenants__tenant__name",
         "room__room_id",
     )
     fields = (
@@ -215,6 +217,42 @@ class TenancyAdmin(ModelAdmin):
             kwargs["queryset"] = Room.objects.filter(status="empty")
 
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+
+        return queryset.prefetch_related("tenants")
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, may_have_duplicates = super().get_search_results(
+            request,
+            queryset,
+            search_term,
+        )
+
+        primary_tenant_ids = TenancyTenant.objects.filter(
+            role="primary",
+            tenant__name__icontains=search_term,
+        ).values_list("tenancy_id", flat=True)
+
+        primary_room_ids = Room.objects.filter(
+            room_id__icontains=search_term,
+        ).values_list("id", flat=True)
+
+        queryset = Tenancy.objects.filter(
+            Q(id__in=queryset.values("id"))
+            & (Q(id__in=primary_tenant_ids) | Q(room_id__in=primary_room_ids))
+        )
+
+        return queryset, may_have_duplicates
+
+    @admin.display(description="Primary Tenant")
+    def primary_tenant(self, obj):
+        for tenancy_tenant in obj.tenants.all():
+            if tenancy_tenant.role == "primary":
+                return tenancy_tenant.tenant
+
+        return "-"
 
     class Media:
         js = ("admin/js/room_condition.js",)

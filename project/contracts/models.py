@@ -41,7 +41,10 @@ class TenancyTenant(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenancy = models.ForeignKey(
-        "Tenancy", on_delete=models.CASCADE, help_text="Hợp đồng thuê"
+        "Tenancy",
+        on_delete=models.CASCADE,
+        help_text="Hợp đồng thuê",
+        related_name="tenants",
     )
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, help_text="Người thuê")
     role = models.CharField(
