@@ -1,6 +1,11 @@
 .form-row.field-row {
     display: flex;
     flex-direction: column;
+    border-bottom: 1px dashed var(--color-base-200);
+}
+
+.form-row.field-row > .field-line {
+    border-bottom: 0;
 }
 
 @media (min-width: 1024px) {
