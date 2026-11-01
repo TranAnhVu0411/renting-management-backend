@@ -1,0 +1,28 @@
+{% load static %}
+
+<div
+    id="room-conditions"
+    data-url-template="{% url 'properties:room-conditions' pk='ROOM_ID_PLACEHOLDER' %}"
+    class="border border-base-200 rounded-default p-4 mb-6
+           dark:border-base-800"
+>
+    <h3 class="font-semibold text-base-900 dark:text-base-100">
+        Điều kiện của phòng
+    </h3>
+
+    <p id="room-conditions-message" class="text-sm mt-2">
+        Vui lòng chọn phòng để xem điều kiện ở ghép.
+    </p>
+
+    <div id="room-conditions-details" hidden>
+        <p class="mt-2">
+            Cho phép ở ghép:
+            <strong id="room-allow-cotenant">—</strong>
+        </p>
+
+        <p class="mt-1">
+            Số co-tenant tối đa:
+            <strong id="room-cotenant-maximum">—</strong>
+        </p>
+    </div>
+</div>
