@@ -1,6 +1,37 @@
 (function () {
     "use strict";
 
+    /**
+     * Update the water price help text based on the flat fee toggle.
+     */
+    function updateWaterPriceHelpText(toggleInput) {
+        const field = toggleInput.closest(".form-row.field-row");
+
+        if (!field) return;
+
+        const waterPriceField = field.querySelector(".field-water_price");
+
+        if (!waterPriceField) return;
+
+        const helpText = waterPriceField.querySelector(
+            ".leading-relaxed.mt-2.text-xs"
+        );
+
+        if (!helpText) return;
+
+        helpText.textContent = toggleInput.checked
+            ? "Giá nước (khoán)"
+            : "Giá nước (theo m3)";
+    }
+
+    function updateAllWaterPriceHelpTexts(root = document) {
+        root.querySelectorAll(
+            '.field-is_water_flat_fee input[type="checkbox"]'
+        ).forEach((input) => {
+            updateWaterPriceHelpText(input);
+        });
+    }
+
     const SERVICE_FIELDS = [
         { toggle: "laundry", price: "laundry_price" },
         { toggle: "parking", price: "parking_price" },
@@ -67,10 +98,15 @@
                 input
             );
         }
+
+        if (input.closest(".field-is_water_flat_fee")) {
+            updateWaterPriceHelpText(input);
+        }
     }
 
     function init() {
         // Apply the initial state when the page loads.
+        updateAllWaterPriceHelpTexts();
         updateAllServicePrices();
 
         // Handle checkbox changes, including dynamically added inline forms.
@@ -81,6 +117,7 @@
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
                     if (node.nodeType === Node.ELEMENT_NODE) {
+                        updateAllWaterPriceHelpTexts(node);
                         updateAllServicePrices(node);
                     }
                 });
@@ -96,6 +133,7 @@
         const mediaQuery = window.matchMedia("(min-width: 1024px)");
 
         mediaQuery.addEventListener("change", () => {
+            updateAllWaterPriceHelpTexts();
             updateAllServicePrices();
         });
     }

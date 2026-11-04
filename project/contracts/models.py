@@ -71,7 +71,10 @@ class TenancyService(models.Model):
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
     electricity_price = models.PositiveIntegerField(help_text="Giá điện (theo kWh)")
-    water_price = models.PositiveIntegerField(help_text="Giá nước (theo m3)")
+    water_price = models.PositiveIntegerField(help_text="Giá nước")
+    is_water_flat_fee = models.BooleanField(
+        default=False, help_text="Có tính phí nước cố định"
+    )
     laundry = models.BooleanField(default=False, help_text="Dịch vụ giặt là")
     laundry_price = models.PositiveIntegerField(
         help_text="Giá dịch vụ giặt là",

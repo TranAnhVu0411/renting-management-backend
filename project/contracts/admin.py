@@ -103,6 +103,18 @@ class TenancyServiceInlineForm(forms.ModelForm):
         model = TenancyService
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        is_water_flat_fee = self.initial.get(
+            "is_water_flat_fee",
+            self.instance.is_water_flat_fee,
+        )
+
+        self.fields["water_price"].help_text = (
+            "Giá nước (khoán)" if is_water_flat_fee else "Giá nước (theo m3)"
+        )
+
     def clean(self):
         cleaned_data = super().clean()
         if not cleaned_data.get("laundry"):
@@ -141,7 +153,7 @@ class TenancyServiceInline(StackedInline):
                 "fields": [
                     "rent_price",
                     "electricity_price",
-                    "water_price",
+                    ("is_water_flat_fee", "water_price"),
                 ]
             },
         ),
