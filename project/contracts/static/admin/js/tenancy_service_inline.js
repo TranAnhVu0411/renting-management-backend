@@ -32,6 +32,10 @@
         });
     }
 
+    /**
+     * Show the price field only when its corresponding service is enabled.
+     * The grouped fields are rendered inside the same .form-row.field-row.
+     */
     const SERVICE_FIELDS = [
         { toggle: "laundry", price: "laundry_price" },
         { toggle: "parking", price: "parking_price" },
@@ -39,10 +43,6 @@
         { toggle: "cleaner", price: "cleaner_price" },
     ];
 
-    /**
-     * Show the price field only when its corresponding service is enabled.
-     * The grouped fields are rendered inside the same .form-row.field-row.
-     */
     function updateServicePrice(toggleName, priceName, toggleInput) {
         const row = toggleInput.closest(".form-row.field-row");
 
@@ -73,6 +73,205 @@
                 `.field-${toggle} input[type="checkbox"]`
             ).forEach((input) => {
                 updateServicePrice(toggle, price, input);
+            });
+        });
+    }
+
+    /**
+     * Show the button next to price field. When user click the button,
+     * it will apply the default service price rule in the corresponding field.
+     */
+    const SERVICE_PRICE_FIELDS = [
+        "electricity_price",
+        "water_price",
+        "laundry_price",
+        "parking_price",
+        "internet_price",
+        "cleaner_price",
+    ];
+
+    let servicePriceRulesPromise = null;
+
+    /**
+     * Get the ServicePriceRule endpoint.
+     *
+     * Supports standard Django Admin add/change URLs.
+     */
+    function getServicePriceRuleUrl() {
+        const path = window.location.pathname.replace(
+            /(?:add|[^/]+\/change)\/?$/,
+            "service-price-rule/"
+        );
+
+        return new URL(path, window.location.origin);
+    }
+
+    /**
+     * Fetch default service prices.
+     * Cache the request to avoid unnecessary API calls.
+     */
+    function getServicePriceRules() {
+        if (!servicePriceRulesPromise) {
+            servicePriceRulesPromise = fetch(
+                getServicePriceRuleUrl(),
+                {
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                }
+            )
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(
+                            "Unable to fetch service price rules."
+                        );
+                    }
+
+                    return response.json();
+                })
+                .catch((error) => {
+                    servicePriceRulesPromise = null;
+                    throw error;
+                });
+        }
+
+        return servicePriceRulesPromise;
+    }
+
+    /**
+     * Get the corresponding price rule field.
+     * Water price depends on the flat fee toggle.
+     */
+    function getServicePriceRuleField(input) {
+        const fieldName = input.name.split("-").pop();
+
+        if (fieldName !== "water_price") {
+            return fieldName;
+        }
+
+        const row = input.closest(".form-row.field-row");
+
+        const flatFeeToggle = row?.querySelector(
+            '.field-is_water_flat_fee input[type="checkbox"]'
+        );
+
+        return flatFeeToggle?.checked
+            ? "water_flat_fee"
+            : "water_price";
+    }
+
+    /**
+     * Handle the service price button click.
+     */
+    async function handleServicePriceClick(input, button) {
+        try {
+            button.disabled = true;
+
+            const rules = await getServicePriceRules();
+            const ruleField = getServicePriceRuleField(input);
+
+            if (!ruleField || rules[ruleField] === undefined) {
+                throw new Error(
+                    `Service price rule "${ruleField}" not found.`
+                );
+            }
+
+            input.value = rules[ruleField];
+
+            // Notify other scripts and Django Admin about the change.
+            input.dispatchEvent(
+                new Event("input", { bubbles: true })
+            );
+
+            input.dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
+        } catch (error) {
+            console.error("Service price rule error:", error);
+            button.title = "Không thể lấy giá mặc định. Vui lòng thử lại.";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    /**
+     * Create a button next to a service price input.
+     */
+    function createServicePriceButton(input) {
+        if (input.dataset.servicePriceButtonInitialized) return;
+
+        const button = document.createElement("button");
+
+        button.type = "button";
+        button.className = [
+            // Layout
+            "inline-flex",
+            "items-center",
+            "justify-center",
+            "shrink-0",
+
+            // Size
+            "rounded-md",
+            "px-2",
+            "py-1",
+
+            // Light mode
+            "border",
+            "border-base-300",
+            "bg-base-100",
+            "text-base-600",
+            "hover:bg-base-200",
+
+            // Dark mode
+            "dark:border-base-700",
+            "dark:bg-base-800",
+            "dark:text-base-300",
+            "dark:hover:bg-base-700",
+
+            // Transition
+            "transition-colors",
+            "duration-150",
+
+            // Focus
+            "focus:outline-none",
+            "focus:ring-2",
+            "focus:ring-primary-500",
+        ].join(" ");
+
+        button.title = "Lấy giá mặc định";
+        button.setAttribute("aria-label", "Lấy giá mặc định");
+
+        button.innerHTML = `
+            <span class="material-symbols-outlined text-base">
+                download
+            </span>
+        `;
+
+        button.addEventListener("click", () => {
+            handleServicePriceClick(input, button);
+        });
+
+        // Wrap the input and button to control their layout.
+        const wrapper = document.createElement("div");
+
+        wrapper.className = "service-price-input-wrapper";
+
+        input.parentNode.insertBefore(wrapper, input);
+
+        wrapper.append(input, button);
+
+        input.dataset.servicePriceButtonInitialized = "true";
+    }
+
+    /**
+     * Initialize service price buttons.
+     */
+    function updateAllServicePriceButtons(root = document) {
+        SERVICE_PRICE_FIELDS.forEach((fieldName) => {
+            root.querySelectorAll(
+                `.field-${fieldName} input:not([type="hidden"])`
+            ).forEach((input) => {
+                createServicePriceButton(input);
             });
         });
     }
@@ -108,6 +307,7 @@
         // Apply the initial state when the page loads.
         updateAllWaterPriceHelpTexts();
         updateAllServicePrices();
+        updateAllServicePriceButtons();
 
         // Handle checkbox changes, including dynamically added inline forms.
         document.addEventListener("change", handleChange);
@@ -119,6 +319,7 @@
                     if (node.nodeType === Node.ELEMENT_NODE) {
                         updateAllWaterPriceHelpTexts(node);
                         updateAllServicePrices(node);
+                        updateAllServicePriceButtons(node);
                     }
                 });
             });
@@ -135,6 +336,7 @@
         mediaQuery.addEventListener("change", () => {
             updateAllWaterPriceHelpTexts();
             updateAllServicePrices();
+            updateAllServicePriceButtons();
         });
     }
 

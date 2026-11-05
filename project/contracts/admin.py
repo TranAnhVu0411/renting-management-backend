@@ -3,6 +3,7 @@ from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
@@ -174,6 +175,7 @@ class TenancyServiceInline(StackedInline):
 
     class Media:
         js = ("admin/js/tenancy_service_inline.js",)
+        css = {"all": ("admin/css/tenancy_service_inline.css",)}
 
 
 class TenancyForm(forms.ModelForm):
@@ -267,6 +269,34 @@ class TenancyAdmin(ModelAdmin):
                 return tenancy_tenant.tenant
 
         return "-"
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "service-price-rule/",
+                self.admin_site.admin_view(self.get_service_price_rule),
+                name="tenancy_service_price_rule",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def get_service_price_rule(self, request):
+        rule = ServicePriceRule.get_solo()
+
+        return JsonResponse(
+            {
+                "electricity_price": rule.electric_price,
+                "water_price": rule.water_price,
+                "water_flat_fee": rule.water_flat_fee,
+                "parking_price": rule.parking_price,
+                "laundry_price": rule.laundry_price,
+                "internet_price": rule.internet_price,
+                "cleaner_price": rule.cleaner_price,
+            }
+        )
 
     class Media:
         js = ("admin/js/room_condition.js",)
