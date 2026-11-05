@@ -3,6 +3,8 @@ from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.shortcuts import redirect
+from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget
 
@@ -282,8 +284,31 @@ class ServicePriceRuleAdmin(ModelAdmin):
         "cleaner_price",
     )
 
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "",
+                self.admin_site.admin_view(self.redirect_to_change),
+                name="contracts_servicepricerule_changelist",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def redirect_to_change(self, request):
+        obj = ServicePriceRule.get_solo()
+
+        url = reverse(
+            "admin:contracts_servicepricerule_change",
+            args=[obj.pk],
+        )
+
+        return redirect(url)
+
     def has_add_permission(self, request):
-        return False
+        return not ServicePriceRule.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False
