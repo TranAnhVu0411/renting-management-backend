@@ -102,3 +102,67 @@ class TenancyService(models.Model):
 
     def __str__(self):
         return f"Tenancy Service ({self.id})"
+
+
+class ServicePriceRule(models.Model):
+    """
+    Singleton model storing default prices for rental services.
+    Only one record is allowed (primary key = 1).
+    """
+
+    id = models.PositiveSmallIntegerField(
+        primary_key=True,
+        default=1,
+        editable=False,
+    )
+    electric_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá điện (theo kWh)",
+    )
+    water_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá nước (theo m³)",
+    )
+    water_flat_fee = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá nước cố định (VND)",
+    )
+    parking_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá dịch vụ gửi xe (VND/phương tiện/tháng)",
+    )
+    laundry_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá dịch vụ giặt là (VND)",
+    )
+    internet_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá dịch vụ internet (VND)",
+    )
+    cleaner_price = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Giá dịch vụ dọn dẹp (VND)",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Service Price Rule"
+        verbose_name_plural = "Service Price Rule"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("ServicePriceRule singleton instance cannot be deleted.")
+
+    @classmethod
+    def get_solo(cls):
+        """Get the singleton instance, creating it if necessary."""
+        instance, _ = cls.objects.get_or_create(pk=1)
+        return instance
+
+    def __str__(self):
+        return "Default Service Price Rule"

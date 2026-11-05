@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget
 
-from .models import Tenancy, TenancyTenant, TenancyService
+from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
 from properties.models import Room
 
 
@@ -268,3 +268,22 @@ class TenancyAdmin(ModelAdmin):
 
     class Media:
         js = ("admin/js/room_condition.js",)
+
+
+@admin.register(ServicePriceRule)
+class ServicePriceRuleAdmin(ModelAdmin):
+    list_display = (
+        "electric_price",
+        "water_price",
+        "water_flat_fee",
+        "parking_price",
+        "laundry_price",
+        "internet_price",
+        "cleaner_price",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
