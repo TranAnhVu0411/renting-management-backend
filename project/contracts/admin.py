@@ -91,7 +91,7 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
 class TenancyTenantInline(TabularInline):
     model = TenancyTenant
     formset = TenancyTenantInlineFormSet
-    extra = 1
+    extra = 0
     autocomplete_fields = ("tenant",)
     fields = ("tenant", "role", "active")
     show_change_link = True
