@@ -104,6 +104,18 @@ class TenancyService(models.Model):
         blank=True,
     )
 
+    def _reset_unused_prices(self):
+        if not self.laundry:
+            self.laundry_price = None
+        if not self.internet:
+            self.internet_price = None
+        if not self.cleaner:
+            self.cleaner_price = None
+
+    def save(self, *args, **kwargs):
+        self._reset_unused_prices()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Tenancy Service ({self.id})"
 

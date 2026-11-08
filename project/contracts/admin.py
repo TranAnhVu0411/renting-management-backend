@@ -120,12 +120,23 @@ class TenancyServiceInlineForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if not cleaned_data.get("laundry"):
-            cleaned_data["laundry_price"] = None
-        if not cleaned_data.get("internet"):
-            cleaned_data["internet_price"] = None
-        if not cleaned_data.get("cleaner"):
-            cleaned_data["cleaner_price"] = None
+        tenancy = cleaned_data.get("tenancy")
+        required_prices = [
+            (
+                bool(tenancy and tenancy.vehicle_plate_numbers),
+                "parking_price",
+                "Parking",
+            ),
+            (cleaned_data.get("laundry"), "laundry_price", "Laundry"),
+            (cleaned_data.get("internet"), "internet_price", "Internet"),
+            (cleaned_data.get("cleaner"), "cleaner_price", "Cleaner"),
+        ]
+        for service_enabled, price_field, label in required_prices:
+            if service_enabled and cleaned_data.get(price_field) is None:
+                self.add_error(
+                    price_field,
+                    f"{label} price is required.",
+                )
 
         return cleaned_data
 
