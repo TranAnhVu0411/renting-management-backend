@@ -105,6 +105,8 @@ class TenancyService(models.Model):
     )
 
     def _reset_unused_prices(self):
+        if not self.tenancy.vehicle_plate_numbers:
+            self.parking_price = None
         if not self.laundry:
             self.laundry_price = None
         if not self.internet:
