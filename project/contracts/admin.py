@@ -122,8 +122,6 @@ class TenancyServiceInlineForm(forms.ModelForm):
         cleaned_data = super().clean()
         if not cleaned_data.get("laundry"):
             cleaned_data["laundry_price"] = None
-        if not cleaned_data.get("parking"):
-            cleaned_data["parking_price"] = None
         if not cleaned_data.get("internet"):
             cleaned_data["internet_price"] = None
         if not cleaned_data.get("cleaner"):
@@ -164,8 +162,8 @@ class TenancyServiceInline(StackedInline):
             "Dịch vụ",
             {
                 "fields": [
+                    "parking_price",
                     ("laundry", "laundry_price"),
-                    ("parking", "parking_price"),
                     ("internet", "internet_price"),
                     ("cleaner", "cleaner_price"),
                 ]

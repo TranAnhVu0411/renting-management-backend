@@ -30,6 +30,11 @@ class Tenancy(models.Model):
         help_text="Trạng thái hợp đồng",
     )
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.vehicle_plate_numbers:
+            TenancyService.objects.filter(tenancy=self).update(parking_price=None)
+
     def __str__(self):
         return f"Tenancy ({self.id}) (From {self.start_date} to {self.end_date}) (Room {self.room.room_id})"
 
@@ -81,7 +86,6 @@ class TenancyService(models.Model):
         null=True,
         blank=True,
     )
-    parking = models.BooleanField(default=False, help_text="Dịch vụ gửi xe")
     parking_price = models.PositiveIntegerField(
         help_text="Giá dịch vụ gửi xe",
         null=True,

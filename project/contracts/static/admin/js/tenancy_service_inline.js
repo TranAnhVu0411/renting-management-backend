@@ -38,7 +38,6 @@
      */
     const SERVICE_FIELDS = [
         { toggle: "laundry", price: "laundry_price" },
-        { toggle: "parking", price: "parking_price" },
         { toggle: "internet", price: "internet_price" },
         { toggle: "cleaner", price: "cleaner_price" },
     ];
@@ -67,6 +66,31 @@
         }
     }
 
+    /**
+     * Show the parking price field only when vehicle plate numbers exist.
+     */
+    function updateParkingPriceVisibility() {
+        const vehiclePlateNumbersField = document.querySelector(
+            ".field-vehicle_plate_numbers"
+        );
+
+        if (!vehiclePlateNumbersField) return;
+
+        const hasVehicle = Array.from(
+            vehiclePlateNumbersField.querySelectorAll(
+                'input:not([type="hidden"]), textarea, select'
+            )
+        ).some((input) => input.value.trim() !== "");
+
+        document.querySelectorAll(".field-parking_price").forEach((priceField) => {
+            if (hasVehicle) {
+                priceField.style.display = "";
+            } else {
+                priceField.style.display = "none";
+            }
+        });
+    }
+
     function updateAllServicePrices(root = document) {
         SERVICE_FIELDS.forEach(({ toggle, price }) => {
             root.querySelectorAll(
@@ -75,6 +99,23 @@
                 updateServicePrice(toggle, price, input);
             });
         });
+        updateParkingPriceVisibility();
+    }
+
+    function handleVehiclePlateNumbersChange(event) {
+        const input = event.target;
+
+        if (
+            !(
+                input instanceof HTMLInputElement ||
+                input instanceof HTMLTextAreaElement
+            ) ||
+            !input.closest(".field-vehicle_plate_numbers")
+        ) {
+            return;
+        }
+
+        updateParkingPriceVisibility();
     }
 
     /**
@@ -311,6 +352,10 @@
 
         // Handle checkbox changes, including dynamically added inline forms.
         document.addEventListener("change", handleChange);
+        
+        // Handle changes to the vehicle plate numbers input to update parking price visibility.
+        document.addEventListener("input", handleVehiclePlateNumbersChange);
+        document.addEventListener("change", handleVehiclePlateNumbersChange);
 
         // Handle inline rows added dynamically by Django Admin.
         const observer = new MutationObserver((mutations) => {
@@ -323,6 +368,8 @@
                     }
                 });
             });
+
+            updateParkingPriceVisibility();
         });
 
         observer.observe(document.body, {
