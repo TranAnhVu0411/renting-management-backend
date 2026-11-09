@@ -3,10 +3,13 @@ from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
+from django.http import JsonResponse
+from django.shortcuts import redirect
+from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget
 
-from .models import Tenancy, TenancyTenant, TenancyService
+from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
 from properties.models import Room
 
 
@@ -88,7 +91,7 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
 class TenancyTenantInline(TabularInline):
     model = TenancyTenant
     formset = TenancyTenantInlineFormSet
-    extra = 1
+    extra = 0
     autocomplete_fields = ("tenant",)
     fields = ("tenant", "role", "active")
     show_change_link = True
@@ -103,16 +106,37 @@ class TenancyServiceInlineForm(forms.ModelForm):
         model = TenancyService
         fields = "__all__"
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        is_water_flat_fee = self.initial.get(
+            "is_water_flat_fee",
+            self.instance.is_water_flat_fee,
+        )
+
+        self.fields["water_price"].help_text = (
+            "Giá nước (khoán)" if is_water_flat_fee else "Giá nước (theo m3)"
+        )
+
     def clean(self):
         cleaned_data = super().clean()
-        if not cleaned_data.get("laundry"):
-            cleaned_data["laundry_price"] = None
-        if not cleaned_data.get("parking"):
-            cleaned_data["parking_price"] = None
-        if not cleaned_data.get("internet"):
-            cleaned_data["internet_price"] = None
-        if not cleaned_data.get("cleaner"):
-            cleaned_data["cleaner_price"] = None
+        tenancy = cleaned_data.get("tenancy")
+        required_prices = [
+            (
+                bool(tenancy and tenancy.vehicle_plate_numbers),
+                "parking_price",
+                "Parking",
+            ),
+            (cleaned_data.get("laundry"), "laundry_price", "Laundry"),
+            (cleaned_data.get("internet"), "internet_price", "Internet"),
+            (cleaned_data.get("cleaner"), "cleaner_price", "Cleaner"),
+        ]
+        for service_enabled, price_field, label in required_prices:
+            if service_enabled and cleaned_data.get(price_field) is None:
+                self.add_error(
+                    price_field,
+                    f"{label} price is required.",
+                )
 
         return cleaned_data
 
@@ -141,7 +165,7 @@ class TenancyServiceInline(StackedInline):
                 "fields": [
                     "rent_price",
                     "electricity_price",
-                    "water_price",
+                    ("is_water_flat_fee", "water_price"),
                 ]
             },
         ),
@@ -149,8 +173,8 @@ class TenancyServiceInline(StackedInline):
             "Dịch vụ",
             {
                 "fields": [
+                    "parking_price",
                     ("laundry", "laundry_price"),
-                    ("parking", "parking_price"),
                     ("internet", "internet_price"),
                     ("cleaner", "cleaner_price"),
                 ]
@@ -160,6 +184,7 @@ class TenancyServiceInline(StackedInline):
 
     class Media:
         js = ("admin/js/tenancy_service_inline.js",)
+        css = {"all": ("admin/css/tenancy_service_inline.css",)}
 
 
 class TenancyForm(forms.ModelForm):
@@ -254,5 +279,75 @@ class TenancyAdmin(ModelAdmin):
 
         return "-"
 
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "service-price-rule/",
+                self.admin_site.admin_view(self.get_service_price_rule),
+                name="tenancy_service_price_rule",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def get_service_price_rule(self, request):
+        rule = ServicePriceRule.get_solo()
+
+        return JsonResponse(
+            {
+                "electricity_price": rule.electric_price,
+                "water_price": rule.water_price,
+                "water_flat_fee": rule.water_flat_fee,
+                "parking_price": rule.parking_price,
+                "laundry_price": rule.laundry_price,
+                "internet_price": rule.internet_price,
+                "cleaner_price": rule.cleaner_price,
+            }
+        )
+
     class Media:
         js = ("admin/js/room_condition.js",)
+
+
+@admin.register(ServicePriceRule)
+class ServicePriceRuleAdmin(ModelAdmin):
+    list_display = (
+        "electric_price",
+        "water_price",
+        "water_flat_fee",
+        "parking_price",
+        "laundry_price",
+        "internet_price",
+        "cleaner_price",
+    )
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "",
+                self.admin_site.admin_view(self.redirect_to_change),
+                name="contracts_servicepricerule_changelist",
+            ),
+        ]
+
+        return custom_urls + urls
+
+    def redirect_to_change(self, request):
+        obj = ServicePriceRule.get_solo()
+
+        url = reverse(
+            "admin:contracts_servicepricerule_change",
+            args=[obj.pk],
+        )
+
+        return redirect(url)
+
+    def has_add_permission(self, request):
+        return not ServicePriceRule.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
