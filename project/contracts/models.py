@@ -57,9 +57,6 @@ class TenancyTenant(models.Model):
         choices=[("primary", "Chính"), ("co-tenant", "Ở ghép")],
         help_text="Vai trò của người thuê trong hợp đồng",
     )
-    active = models.BooleanField(
-        default=True, help_text="Trạng thái hoạt động của người thuê trong hợp đồng"
-    )
 
     def __str__(self):
         return f"Tenancy Tenant ({self.id})"

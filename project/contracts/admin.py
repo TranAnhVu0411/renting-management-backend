@@ -22,8 +22,6 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
 
         primary_count = 0
         cotenant_count = 0
-        is_primary_tenant_active = False
-        active_count = 0
         seen_tenant_ids = set()
 
         for form in self.forms:
@@ -48,28 +46,17 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
                 seen_tenant_ids.add(tenant.pk)
 
             role = form.cleaned_data.get("role")
-            active = form.cleaned_data.get("active")
 
             if role == "primary":
                 primary_count += 1
-                if active:
-                    is_primary_tenant_active = True
             if role == "co-tenant":
                 cotenant_count += 1
-            if active:
-                active_count += 1
 
         if primary_count == 0:
             raise ValidationError("One Tenancy must have one primary tenant.")
 
         if primary_count > 1:
             raise ValidationError("One Tenancy can only have one primary tenant.")
-
-        if active_count == 0:
-            raise ValidationError("One Tenancy must have at least one active tenant.")
-
-        if not is_primary_tenant_active:
-            raise ValidationError("The primary tenant must be active.")
 
         room_id = self.data.get("room")
         if not room_id:
@@ -93,12 +80,12 @@ class TenancyTenantInline(TabularInline):
     formset = TenancyTenantInlineFormSet
     extra = 0
     autocomplete_fields = ("tenant",)
-    fields = ("tenant", "role", "active")
+    fields = ("tenant", "role")
     show_change_link = True
     show_title = False
 
     class Media:
-        js = ("admin/js/tenancy_tenant_autocomplete.js",)
+        js = ("admin/js/tenancy_tenant_inline.js",)
 
 
 class TenancyServiceInlineForm(forms.ModelForm):

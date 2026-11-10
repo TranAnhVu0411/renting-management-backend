@@ -1,6 +1,9 @@
 (function () {
   "use strict";
-
+  /**
+   * Exclude already selected tenants from the autocomplete results.
+   * This is a workaround for the fact that Django's autocomplete_fields does not support excluding selected items.
+   */
   function init($) {
     function selectedTenantIds(currentSelect) {
       const ids = [];
