@@ -3,13 +3,15 @@ from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget
+from unfold.decorators import action
 
 from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
+from .services.tenancy import officialize_tenancy
 from properties.models import Room
 
 
@@ -215,7 +217,6 @@ class TenancyAdmin(ModelAdmin):
         "room",
         "vehicle_plate_numbers",
         ("start_date", "end_date"),
-        "status",
     )
     formfield_overrides = {
         ArrayField: {
@@ -293,6 +294,27 @@ class TenancyAdmin(ModelAdmin):
                 "cleaner_price": rule.cleaner_price,
             }
         )
+
+    actions_submit_line = ["changeform_officialize_tenancy_action"]
+
+    @action(
+        description="Officialize tenancy",
+        permissions=["officialize_tenancy_action"],
+    )
+    def changeform_officialize_tenancy_action(self, request, obj):
+        officialize_tenancy(obj.id)
+
+    def has_officialize_tenancy_action_permission(self, request, object_id):
+        if object_id:
+            tenancy = Tenancy.objects.get(pk=object_id)
+            if tenancy.status != Tenancy.Status.DRAFT:
+                return False
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.status != Tenancy.Status.DRAFT:
+            return False
+        return super().has_change_permission(request, obj)
 
     class Media:
         js = ("admin/js/room_condition.js",)

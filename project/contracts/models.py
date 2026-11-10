@@ -7,6 +7,12 @@ from properties.models import Room
 
 
 class Tenancy(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Nháp"
+        OFFICIAL = "official", "Chính thức"
+        OUTDATE = "outdate", "Hết hạn"
+        TERMINATE = "terminate", "Chấm dứt"
+
     class Meta:
         ordering = ["room", "start_date", "end_date"]
         verbose_name_plural = "Tenancies"
@@ -20,13 +26,8 @@ class Tenancy(models.Model):
     end_date = models.DateField(null=True, blank=True, help_text="Ngày kết thúc thuê")
     status = models.CharField(
         max_length=20,
-        choices=[
-            ("draft", "Nháp"),
-            ("official", "Chính thức"),
-            ("outdate", "Hết hạn"),
-            ("terminate", "Chấm dứt"),
-        ],
-        default="draft",
+        choices=Status.choices,
+        default=Status.DRAFT,
         help_text="Trạng thái hợp đồng",
     )
 
