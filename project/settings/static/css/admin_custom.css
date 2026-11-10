@@ -5,6 +5,10 @@
     border-bottom: 1px dashed var(--color-base-200);
 }
 
+.form-row.field-row:last-child {
+    border-bottom: none;
+}
+
 .form-row.field-row > .field-line {
     flex: 1;
     border-bottom: 0;
