@@ -41,6 +41,10 @@ class Tenancy(models.Model):
 
 
 class TenancyTenant(models.Model):
+    class Role(models.TextChoices):
+        PRIMARY = "primary", "Chính"
+        CO_TENANT = "co-tenant", "Ở ghép"
+
     class Meta:
         ordering = ["tenancy", "tenant", "role"]
         verbose_name_plural = "Tenancy Tenants"
@@ -55,7 +59,7 @@ class TenancyTenant(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, help_text="Người thuê")
     role = models.CharField(
         max_length=20,
-        choices=[("primary", "Chính"), ("co-tenant", "Ở ghép")],
+        choices=Role.choices,
         help_text="Vai trò của người thuê trong hợp đồng",
     )
 

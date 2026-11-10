@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'tenants',
     'properties',
     'contracts',
+    'billing',
 ]
 
 MIDDLEWARE = [
