@@ -77,31 +77,31 @@ class TenancyService(models.Model):
         Tenancy, on_delete=models.CASCADE, help_text="Hợp đồng thuê"
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
-    electricity_price = models.PositiveIntegerField(help_text="Giá điện (theo kWh)")
+    electricity_price = models.PositiveIntegerField(help_text="Giá điện (VND/kWh)")
     water_price = models.PositiveIntegerField(help_text="Giá nước")
     is_water_flat_fee = models.BooleanField(
         default=False, help_text="Có tính phí nước cố định"
     )
     laundry = models.BooleanField(default=False, help_text="Dịch vụ giặt là")
     laundry_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ giặt là",
+        help_text="Giá dịch vụ giặt là (VND/người/tháng)",
         null=True,
         blank=True,
     )
     parking_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ gửi xe",
+        help_text="Giá dịch vụ gửi xe (VND/phương tiện/tháng)",
         null=True,
         blank=True,
     )
     internet = models.BooleanField(default=False, help_text="Dịch vụ internet")
     internet_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ internet",
+        help_text="Giá dịch vụ internet (VND/người/tháng)",
         null=True,
         blank=True,
     )
     cleaner = models.BooleanField(default=False, help_text="Dịch vụ dọn dẹp")
     cleaner_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ dọn dẹp",
+        help_text="Giá dịch vụ dọn dẹp (VND/người/tháng)",
         null=True,
         blank=True,
     )
@@ -135,17 +135,17 @@ class ServicePriceRule(models.Model):
         default=1,
         editable=False,
     )
-    electric_price = models.PositiveIntegerField(
+    electricity_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá điện (theo kWh)",
+        verbose_name="Giá điện (VND/kWh)",
     )
     water_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá nước (theo m³)",
+        verbose_name="Giá nước (VND/m³)",
     )
     water_flat_fee = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá nước cố định (VND)",
+        verbose_name="Giá nước cố định (VND/người/tháng)",
     )
     parking_price = models.PositiveIntegerField(
         default=0,
@@ -153,15 +153,15 @@ class ServicePriceRule(models.Model):
     )
     laundry_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ giặt là (VND)",
+        verbose_name="Giá dịch vụ giặt là (VND/người/tháng)",
     )
     internet_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ internet (VND)",
+        verbose_name="Giá dịch vụ internet (VND/người/tháng)",
     )
     cleaner_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ dọn dẹp (VND)",
+        verbose_name="Giá dịch vụ dọn dẹp (VND/người/tháng)",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

@@ -20,8 +20,8 @@
         if (!helpText) return;
 
         helpText.textContent = toggleInput.checked
-            ? "Giá nước (khoán)"
-            : "Giá nước (theo m3)";
+            ? "Giá nước (VND/người/tháng)"
+            : "Giá nước (VND/m3)";
     }
 
     function updateAllWaterPriceHelpTexts(root = document) {

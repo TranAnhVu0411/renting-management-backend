@@ -115,7 +115,7 @@ class TenancyServiceInlineForm(forms.ModelForm):
         )
 
         self.fields["water_price"].help_text = (
-            "Giá nước (khoán)" if is_water_flat_fee else "Giá nước (theo m3)"
+            "Giá nước (VND/người/tháng)" if is_water_flat_fee else "Giá nước (VND/m3)"
         )
 
     def clean(self):
@@ -296,7 +296,7 @@ class TenancyAdmin(ModelAdmin):
 
         return JsonResponse(
             {
-                "electricity_price": rule.electric_price,
+                "electricity_price": rule.electricity_price,
                 "water_price": rule.water_price,
                 "water_flat_fee": rule.water_flat_fee,
                 "parking_price": rule.parking_price,
@@ -336,7 +336,7 @@ class ServicePriceRuleForm(forms.ModelForm):
         model = ServicePriceRule
         fields = "__all__"
         localized_fields = (
-            "electric_price",
+            "electricity_price",
             "water_price",
             "water_flat_fee",
             "parking_price",
@@ -351,7 +351,7 @@ class ServicePriceRuleForm(forms.ModelForm):
 class ServicePriceRuleAdmin(ModelAdmin):
     form = ServicePriceRuleForm
     list_display = (
-        "electric_price",
+        "electricity_price",
         "water_price",
         "water_flat_fee",
         "parking_price",
