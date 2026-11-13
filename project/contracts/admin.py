@@ -164,8 +164,8 @@ class TenancyServiceInline(StackedInline):
             {
                 "fields": [
                     "rent_price",
-                    "electricity_price",
-                    ("is_water_flat_fee", "water_price"),
+                    ("electricity_price", "electricity_number_start_reading"),
+                    ("is_water_flat_fee", "water_price", "water_number_start_reading"),
                 ]
             },
         ),
@@ -194,11 +194,15 @@ class TenancyForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        start_date = cleaned_data.get("start_date")
-        end_date = cleaned_data.get("end_date")
-        if start_date and end_date and start_date > end_date:
+        contract_start_date = cleaned_data.get("contract_start_date")
+        contract_end_date = cleaned_data.get("contract_end_date")
+        if (
+            contract_start_date
+            and contract_end_date
+            and contract_start_date > contract_end_date
+        ):
             self.add_error(
-                "end_date",
+                "contract_end_date",
                 "End date must be after start date.",
             )
 
@@ -215,8 +219,8 @@ class TenancyAdmin(ModelAdmin):
     list_display = (
         "primary_tenant",
         "room",
-        "start_date",
-        "end_date",
+        "contract_start_date",
+        "contract_end_date",
         "status",
     )
     list_filter = ("status",)
@@ -227,7 +231,8 @@ class TenancyAdmin(ModelAdmin):
     fields = (
         "room",
         "vehicle_plate_numbers",
-        ("start_date", "end_date"),
+        ("contract_start_date", "contract_end_date"),
+        ("billing_start_date", "deposit"),
     )
     formfield_overrides = {
         ArrayField: {

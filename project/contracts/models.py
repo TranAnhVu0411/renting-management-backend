@@ -14,7 +14,7 @@ class Tenancy(models.Model):
         TERMINATE = "terminate", "Chấm dứt"
 
     class Meta:
-        ordering = ["room", "start_date", "end_date"]
+        ordering = ["room", "contract_start_date", "contract_end_date"]
         verbose_name_plural = "Tenancies"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -22,8 +22,10 @@ class Tenancy(models.Model):
     vehicle_plate_numbers = ArrayField(
         models.CharField(max_length=20), help_text="Biển số xe", null=True, blank=True
     )
-    start_date = models.DateField(null=True, blank=True, help_text="Ngày bắt đầu thuê")
-    end_date = models.DateField(null=True, blank=True, help_text="Ngày kết thúc thuê")
+    contract_start_date = models.DateField(help_text="Ngày hợp đồng có hiệu lực")
+    contract_end_date = models.DateField(help_text="Ngày hợp đồng hết hiệu lực")
+    billing_start_date = models.DateField(help_text="Ngày bắt đầu tính phí thuê nhà")
+    deposit = models.PositiveIntegerField(help_text="Tiền đặt cọc")
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -37,7 +39,7 @@ class Tenancy(models.Model):
             TenancyService.objects.filter(tenancy=self).update(parking_price=None)
 
     def __str__(self):
-        return f"Tenancy ({self.id}) (From {self.start_date} to {self.end_date}) (Room {self.room.room_id})"
+        return f"Tenancy ({self.id}) (From {self.contract_start_date} to {self.contract_end_date}) (Room {self.room.room_id})"
 
 
 class TenancyTenant(models.Model):
@@ -78,7 +80,13 @@ class TenancyService(models.Model):
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
     electricity_price = models.PositiveIntegerField(help_text="Giá điện (VND/kWh)")
+    electricity_number_start_reading = models.PositiveIntegerField(
+        help_text="Chỉ số điện bắt đầu tính (kWh)"
+    )
     water_price = models.PositiveIntegerField(help_text="Giá nước")
+    water_number_start_reading = models.PositiveIntegerField(
+        help_text="Chỉ số nước bắt đầu tính (m³)", null=True, blank=True
+    )
     is_water_flat_fee = models.BooleanField(
         default=False, help_text="Có tính phí nước cố định"
     )
