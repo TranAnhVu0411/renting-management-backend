@@ -46,7 +46,7 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.headless',
-    'users',
+    'core',
     'tenants',
     'properties',
     'contracts',
@@ -147,11 +147,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Unfold settings for custom admin styles
 UNFOLD = {
     "STYLES": [
         lambda request: static("css/admin_custom.css"),
     ],
 }
+USE_THOUSAND_SEPARATOR = True
 
 # Source - https://stackoverflow.com/a/30173694
 AUTHENTICATION_BACKENDS = (

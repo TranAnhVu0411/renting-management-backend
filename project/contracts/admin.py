@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.contrib import admin
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
@@ -13,6 +13,7 @@ from unfold.decorators import action
 from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
 from .services.tenancy import officialize_tenancy
 from properties.models import Room
+from core.widgets import ThousandsInput
 
 
 class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
@@ -94,6 +95,16 @@ class TenancyServiceInlineForm(forms.ModelForm):
     class Meta:
         model = TenancyService
         fields = "__all__"
+        localized_fields = (
+            "rent_price",
+            "electricity_price",
+            "water_price",
+            "parking_price",
+            "laundry_price",
+            "internet_price",
+            "cleaner_price",
+        )
+        widgets = {name: ThousandsInput() for name in localized_fields}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -320,8 +331,25 @@ class TenancyAdmin(ModelAdmin):
         js = ("admin/js/room_condition.js",)
 
 
+class ServicePriceRuleForm(forms.ModelForm):
+    class Meta:
+        model = ServicePriceRule
+        fields = "__all__"
+        localized_fields = (
+            "electric_price",
+            "water_price",
+            "water_flat_fee",
+            "parking_price",
+            "laundry_price",
+            "internet_price",
+            "cleaner_price",
+        )
+        widgets = {name: ThousandsInput() for name in localized_fields}
+
+
 @admin.register(ServicePriceRule)
 class ServicePriceRuleAdmin(ModelAdmin):
+    form = ServicePriceRuleForm
     list_display = (
         "electric_price",
         "water_price",
