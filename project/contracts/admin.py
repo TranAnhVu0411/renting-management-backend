@@ -13,7 +13,7 @@ from unfold.decorators import action
 from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
 from .services.tenancy import officialize_tenancy
 from properties.models import Room
-from core.widgets import ThousandsInput
+from core.widgets import ThousandsInput, LocalizedDateInputWidget
 
 
 class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
@@ -191,6 +191,11 @@ class TenancyForm(forms.ModelForm):
     class Meta:
         model = Tenancy
         fields = "__all__"
+        widgets = {
+            "contract_start_date": LocalizedDateInputWidget(),
+            "contract_end_date": LocalizedDateInputWidget(),
+            "billing_start_date": LocalizedDateInputWidget(),
+        }
 
     def clean(self):
         cleaned_data = super().clean()

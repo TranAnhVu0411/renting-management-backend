@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from unfold.widgets import UnfoldAdminTextInputWidget
+from unfold.widgets import UnfoldAdminTextInputWidget, UnfoldAdminDateWidget
 
 
 class ThousandsInput(UnfoldAdminTextInputWidget):
@@ -22,3 +22,27 @@ class ThousandsInput(UnfoldAdminTextInputWidget):
     def value_from_datadict(self, data, files, name):
         value = super().value_from_datadict(data, files, name)
         return value.replace(",", "") if isinstance(value, str) else value
+
+
+class LocalizedDateInputWidget(UnfoldAdminDateWidget):
+    """
+    Date input widget with localized placeholder
+    and automatic date formatting.
+    """
+
+    def __init__(self, attrs=None, format=None):
+        attrs = {
+            **(attrs or {}),
+            "data-date-input-mask": "true",
+        }
+
+        super().__init__(
+            attrs=attrs,
+            format=format,
+        )
+
+    class Media(UnfoldAdminDateWidget.Media):
+        js = [
+            *UnfoldAdminDateWidget.Media.js,
+            "core/js/localized_date_input.js",
+        ]
