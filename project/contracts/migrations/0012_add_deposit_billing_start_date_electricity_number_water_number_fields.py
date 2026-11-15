@@ -26,17 +26,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tenancy',
             name='billing_start_date',
-            field=models.DateField(blank=True, help_text='Ngày bắt đầu tính phí thuê nhà', null=True),
+            field=models.DateField(default=django.utils.timezone.now, help_text='Ngày bắt đầu tính phí thuê nhà'),
         ),
         migrations.AddField(
             model_name='tenancy',
             name='contract_end_date',
-            field=models.DateField(blank=True, help_text='Ngày hợp đồng hết hiệu lực', null=True),
+            field=models.DateField(default=django.utils.timezone.now, help_text='Ngày hợp đồng hết hiệu lực'),
         ),
         migrations.AddField(
             model_name='tenancy',
             name='contract_start_date',
-            field=models.DateField(blank=True, help_text='Ngày hợp đồng có hiệu lực', null=True),
+            field=models.DateField(default=django.utils.timezone.now, help_text='Ngày hợp đồng có hiệu lực'),
         ),
         migrations.AddField(
             model_name='tenancy',
