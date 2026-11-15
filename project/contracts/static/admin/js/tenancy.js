@@ -86,13 +86,86 @@
         updateRoomConditions();
     }
 
-    if (document.readyState === "loading") {
-        document.addEventListener(
-            "DOMContentLoaded",
-            initRoomConditions,
-            { once: true }
+    function initContractDates() {
+        const contractStartDateInput = document.getElementById(
+            "id_contract_start_date"
         );
-    } else {
+
+        const contractEndDateInput = document.getElementById(
+            "id_contract_end_date"
+        );
+
+        const billingStartDateInput = document.getElementById(
+            "id_billing_start_date"
+        );
+
+        if (
+            !contractStartDateInput ||
+            !contractEndDateInput ||
+            !billingStartDateInput
+        ) {
+            return;
+        }
+
+        function addOneYear(dateValue) {
+            const date = new Date(`${dateValue}T00:00:00`);
+
+            if (Number.isNaN(date.getTime())) {
+                return "";
+            }
+
+            const originalMonth = date.getMonth();
+
+            date.setFullYear(date.getFullYear() + 1);
+
+            // Handle February 29 in a leap year.
+            if (date.getMonth() !== originalMonth) {
+                date.setDate(0);
+            }
+
+            return [
+                date.getFullYear(),
+                String(date.getMonth() + 1).padStart(2, "0"),
+                String(date.getDate()).padStart(2, "0"),
+            ].join("-");
+        }
+
+        function updateContractDates() {
+            const startDate = contractStartDateInput.value;
+
+            if (!startDate) return;
+
+            // Only populate empty fields.
+            if (!billingStartDateInput.value) {
+                billingStartDateInput.value = startDate;
+            }
+
+            if (!contractEndDateInput.value) {
+                contractEndDateInput.value = addOneYear(startDate);
+            }
+        }
+
+        contractStartDateInput.addEventListener(
+            "blur",
+            updateContractDates
+        );
+
+        contractStartDateInput.addEventListener(
+            "change",
+            updateContractDates
+        );
+    }
+
+    function init() {
         initRoomConditions();
+        initContractDates();
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init, {
+            once: true,
+        });
+    } else {
+        init();
     }
 })();

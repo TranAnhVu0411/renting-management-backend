@@ -333,7 +333,7 @@ class TenancyAdmin(ModelAdmin):
         return super().has_change_permission(request, obj)
 
     class Media:
-        js = ("admin/js/room_condition.js",)
+        js = ("admin/js/tenancy.js",)
 
 
 class ServicePriceRuleForm(forms.ModelForm):
