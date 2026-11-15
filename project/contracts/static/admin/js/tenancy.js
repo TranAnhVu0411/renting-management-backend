@@ -19,6 +19,9 @@
         const maximumValue = document.getElementById(
             "room-cotenant-maximum"
         );
+        const waterMeterValue = document.getElementById(
+            "room-has-water-meter"
+        );
 
         const urlTemplate = container.dataset.urlTemplate;
         let requestController = null;
@@ -69,7 +72,7 @@
                     : "Không";
 
                 maximumValue.textContent = data.co_tenant_maximum;
-
+                waterMeterValue.textContent = data.has_water_meter ? "Có" : "Không";
                 details.hidden = false;
                 message.textContent = "";
             } catch (error) {

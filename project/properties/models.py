@@ -28,6 +28,10 @@ class Room(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Diện tích phòng (m2)",
     )
+    has_water_meter = models.BooleanField(
+        default=True,
+        help_text="Phòng có đồng hồ nước riêng",
+    )
     status = models.CharField(
         max_length=30,
         choices=[
