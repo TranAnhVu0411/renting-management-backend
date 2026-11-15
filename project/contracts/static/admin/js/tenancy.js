@@ -107,41 +107,138 @@
             return;
         }
 
-        function addOneYear(dateValue) {
-            const date = new Date(`${dateValue}T00:00:00`);
+        /**
+         * Parse a date using Django's localized DATE_INPUT_FORMATS.
+         */
+        function parseDate(value) {
+            if (!value) return null;
 
-            if (Number.isNaN(date.getTime())) {
-                return "";
+            const formats = get_format("DATE_INPUT_FORMATS");
+
+            for (const format of formats) {
+                const tokens = [];
+                const pattern = format.replace(
+                    /%([dmyY])/g,
+                    (_, token) => {
+                        tokens.push(token);
+
+                        switch (token) {
+                            case "d":
+                                return "(\\d{1,2})";
+                            case "m":
+                                return "(\\d{1,2})";
+                            case "Y":
+                                return "(\\d{4})";
+                            case "y":
+                                return "(\\d{2})";
+                            default:
+                                return "";
+                        }
+                    }
+                );
+
+                const match = value.match(
+                    new RegExp(`^${pattern}$`)
+                );
+
+                if (!match) continue;
+
+                const parts = {};
+
+                tokens.forEach((token, index) => {
+                    parts[token] = Number(match[index + 1]);
+                });
+
+                const year = parts.Y ?? (
+                    parts.y >= 69
+                        ? 1900 + parts.y
+                        : 2000 + parts.y
+                );
+
+                const month = parts.m;
+                const day = parts.d;
+
+                if (
+                    !year ||
+                    !month ||
+                    !day ||
+                    month < 1 ||
+                    month > 12 ||
+                    day < 1 ||
+                    day > 31
+                ) {
+                    continue;
+                }
+
+                const date = new Date(year, month - 1, day);
+
+                // Reject invalid dates such as 31/02/2026.
+                if (
+                    date.getFullYear() !== year ||
+                    date.getMonth() !== month - 1 ||
+                    date.getDate() !== day
+                ) {
+                    continue;
+                }
+
+                return date;
             }
 
-            const originalMonth = date.getMonth();
+            return null;
+        }
 
-            date.setFullYear(date.getFullYear() + 1);
+        /**
+         * Format a date using Django's localized date format.
+         */
+        function formatDate(date) {
+            const format = get_format("DATE_INPUT_FORMATS")[0];
+
+            const values = {
+                d: String(date.getDate()).padStart(2, "0"),
+                m: String(date.getMonth() + 1).padStart(2, "0"),
+                Y: String(date.getFullYear()),
+                y: String(date.getFullYear()).slice(-2),
+            };
+
+            return format.replace(
+                /%([dmyY])/g,
+                (_, token) => values[token] ?? token
+            );
+        }
+
+        function addOneYear(date) {
+            const year = date.getFullYear() + 1;
+            const month = date.getMonth();
+            const day = date.getDate();
+
+            const result = new Date(year, month, day);
 
             // Handle February 29 in a leap year.
-            if (date.getMonth() !== originalMonth) {
-                date.setDate(0);
+            if (result.getMonth() !== month) {
+                result.setDate(0);
             }
 
-            return [
-                date.getFullYear(),
-                String(date.getMonth() + 1).padStart(2, "0"),
-                String(date.getDate()).padStart(2, "0"),
-            ].join("-");
+            return result;
         }
 
         function updateContractDates() {
-            const startDate = contractStartDateInput.value;
+            const startDateValue = contractStartDateInput.value.trim();
+
+            if (!startDateValue) return;
+
+            const startDate = parseDate(startDateValue);
 
             if (!startDate) return;
 
             // Only populate empty fields.
-            if (!billingStartDateInput.value) {
-                billingStartDateInput.value = startDate;
+            if (!billingStartDateInput.value.trim()) {
+                billingStartDateInput.value = formatDate(startDate);
             }
 
-            if (!contractEndDateInput.value) {
-                contractEndDateInput.value = addOneYear(startDate);
+            if (!contractEndDateInput.value.trim()) {
+                const endDate = addOneYear(startDate);
+
+                contractEndDateInput.value = formatDate(endDate);
             }
         }
 
