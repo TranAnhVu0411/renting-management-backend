@@ -216,6 +216,12 @@
         }
 
         const roomSelect = document.querySelector("#id_room");
+        const selectedOption = roomSelect?.selectedOptions[0];
+
+        // If no room is selected or the room information is not available, return null.
+        if (!selectedOption?.value) {
+            return null;
+        }
 
         const hasWaterMeter =
             roomSelect?.selectedOptions[0]?.dataset.hasWaterMeter;
@@ -305,6 +311,7 @@
 
         button.title = "Lấy giá mặc định";
         button.setAttribute("aria-label", "Lấy giá mặc định");
+        button.dataset.servicePriceButton = "true";
 
         button.innerHTML = `
             <span class="material-symbols-outlined text-base">
@@ -337,8 +344,39 @@
                 `.field-${fieldName} input:not([type="hidden"])`
             ).forEach((input) => {
                 createServicePriceButton(input);
+                if (fieldName === "water_price") {
+                    updateWaterPriceButtonVisibility();
+                }
             });
         });
+    }
+
+    function updateWaterPriceButtonVisibility() {
+        const input = document.querySelector(
+            ".field-water_price input"
+        );
+
+        if (!input) {
+            return;
+        }
+
+        const button = input.parentElement.querySelector(
+            "[data-service-price-button]"
+        );
+
+        if (!button) {
+            return;
+        }
+
+        const roomSelect = document.querySelector("#id_room");
+        const selectedOption = roomSelect?.selectedOptions[0];
+
+        const hasWaterMeter = selectedOption?.dataset.hasWaterMeter;
+
+        button.hidden = !(
+            selectedOption?.value &&
+            (hasWaterMeter === "true" || hasWaterMeter === "false")
+        );
     }
 
     function handleChange(event) {
@@ -375,6 +413,7 @@
         if (!roomSelect) return;
         roomSelect.addEventListener("change", () => {
             updateWaterPriceHelpText();
+            updateWaterPriceButtonVisibility();
         });
         
         // Handle checkbox changes, including dynamically added inline forms.
