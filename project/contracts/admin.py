@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
-from unfold.contrib.forms.widgets import ArrayWidget
+from unfold.contrib.forms.widgets import ArrayWidget, UnfoldAdminSelectWidget
 from unfold.decorators import action
 
 from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
@@ -109,14 +109,18 @@ class TenancyServiceInlineForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        is_water_flat_fee = self.initial.get(
-            "is_water_flat_fee",
-            self.instance.is_water_flat_fee,
-        )
+        room = None
+        if self.instance.tenancy_id:
+            room = self.instance.tenancy.room
 
-        self.fields["water_price"].help_text = (
-            "Giá nước (VND/người/tháng)" if is_water_flat_fee else "Giá nước (VND/m3)"
-        )
+        if room and room.has_water_meter is not None:
+            self.fields["water_price"].help_text = (
+                "Giá nước (VND/m³)"
+                if room.has_water_meter
+                else "Giá nước (VND/người/tháng)"
+            )
+        else:
+            self.fields["water_price"].help_text = "Giá nước"
 
     def clean(self):
         cleaned_data = super().clean()
@@ -165,7 +169,7 @@ class TenancyServiceInline(StackedInline):
                 "fields": [
                     "rent_price",
                     ("electricity_price", "electricity_number_start_reading"),
-                    ("is_water_flat_fee", "water_price", "water_number_start_reading"),
+                    ("water_price", "water_number_start_reading"),
                 ]
             },
         ),
@@ -187,11 +191,41 @@ class TenancyServiceInline(StackedInline):
         css = {"all": ("admin/css/tenancy_service_inline.css",)}
 
 
+class RoomSelectWidget(UnfoldAdminSelectWidget):
+    def create_option(
+        self,
+        name,
+        value,
+        label,
+        selected,
+        index,
+        subindex=None,
+        attrs=None,
+    ):
+        option = super().create_option(
+            name,
+            value,
+            label,
+            selected,
+            index,
+            subindex,
+            attrs,
+        )
+
+        room = getattr(value, "instance", None)
+
+        if room:
+            option["attrs"]["data-has-water-meter"] = str(room.has_water_meter).lower()
+
+        return option
+
+
 class TenancyForm(forms.ModelForm):
     class Meta:
         model = Tenancy
         fields = "__all__"
         widgets = {
+            "room": RoomSelectWidget(),
             "contract_start_date": LocalizedDateInputWidget(),
             "contract_end_date": LocalizedDateInputWidget(),
             "billing_start_date": LocalizedDateInputWidget(),

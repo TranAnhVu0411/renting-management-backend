@@ -4,31 +4,56 @@
     /**
      * Update the water price help text based on the flat fee toggle.
      */
-    function updateWaterPriceHelpText(toggleInput) {
-        const field = toggleInput.closest(".form-row.field-row");
+    const WATER_PRICE_HELP_TEXT = {
+        default: "Giá nước",
+        metered: "Giá nước (VND/m³)",
+        flatFee: "Giá nước (VND/người/tháng)",
+    };
 
-        if (!field) return;
+    function queryAllIncludingRoot(root, selector) {
+        const elements = [];
 
-        const waterPriceField = field.querySelector(".field-water_price");
+        if (root instanceof Element && root.matches(selector)) {
+            elements.push(root);
+        }
 
-        if (!waterPriceField) return;
+        elements.push(...root.querySelectorAll(selector));
 
-        const helpText = waterPriceField.querySelector(
-            ".leading-relaxed.mt-2.text-xs"
-        );
-
-        if (!helpText) return;
-
-        helpText.textContent = toggleInput.checked
-            ? "Giá nước (VND/người/tháng)"
-            : "Giá nước (VND/m3)";
+        return elements;
     }
 
-    function updateAllWaterPriceHelpTexts(root = document) {
-        root.querySelectorAll(
-            '.field-is_water_flat_fee input[type="checkbox"]'
-        ).forEach((input) => {
-            updateWaterPriceHelpText(input);
+    function getWaterPriceHelpText() {
+        const roomSelect = document.querySelector("#id_room");
+
+        if (!roomSelect || !roomSelect.value) {
+            return WATER_PRICE_HELP_TEXT.default;
+        }
+
+        const hasWaterMeter =
+            roomSelect.selectedOptions[0]?.dataset.hasWaterMeter;
+
+        if (hasWaterMeter === "true") {
+            return WATER_PRICE_HELP_TEXT.metered;
+        }
+
+        if (hasWaterMeter === "false") {
+            return WATER_PRICE_HELP_TEXT.flatFee;
+        }
+
+        return WATER_PRICE_HELP_TEXT.default;
+    }
+
+    function updateWaterPriceHelpText(root = document) {
+        const helpTextContent = getWaterPriceHelpText();
+
+        queryAllIncludingRoot(root, ".field-water_price").forEach((field) => {
+            const helpText = field.querySelector(
+                ".leading-relaxed.mt-2.text-xs"
+            );
+
+            if (helpText && helpText.textContent !== helpTextContent) {
+                helpText.textContent = helpTextContent;
+            }
         });
     }
 
@@ -190,13 +215,12 @@
             return fieldName;
         }
 
-        const row = input.closest(".form-row.field-row");
+        const roomSelect = document.querySelector("#id_room");
 
-        const flatFeeToggle = row?.querySelector(
-            '.field-is_water_flat_fee input[type="checkbox"]'
-        );
+        const hasWaterMeter =
+            roomSelect?.selectedOptions[0]?.dataset.hasWaterMeter;
 
-        return flatFeeToggle?.checked
+        return hasWaterMeter === "false"
             ? "water_flat_fee"
             : "water_price";
     }
@@ -338,18 +362,21 @@
                 input
             );
         }
-
-        if (input.closest(".field-is_water_flat_fee")) {
-            updateWaterPriceHelpText(input);
-        }
     }
 
     function init() {
         // Apply the initial state when the page loads.
-        updateAllWaterPriceHelpTexts();
+        updateWaterPriceHelpText();
         updateAllServicePrices();
         updateAllServicePriceButtons();
 
+        // Handle water price help text updates based on room selection.
+         const roomSelect = document.querySelector("#id_room");
+        if (!roomSelect) return;
+        roomSelect.addEventListener("change", () => {
+            updateWaterPriceHelpText();
+        });
+        
         // Handle checkbox changes, including dynamically added inline forms.
         document.addEventListener("change", handleChange);
         
@@ -357,33 +384,11 @@
         document.addEventListener("input", handleVehiclePlateNumbersChange);
         document.addEventListener("change", handleVehiclePlateNumbersChange);
 
-        // Handle inline rows added dynamically by Django Admin.
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        updateAllWaterPriceHelpTexts(node);
-                        updateAllServicePrices(node);
-                        updateAllServicePriceButtons(node);
-                    }
-                });
-            });
-
-            updateParkingPriceVisibility();
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-        });
-        
         // Update service prices when the screen size changes.
         const mediaQuery = window.matchMedia("(min-width: 1024px)");
 
         mediaQuery.addEventListener("change", () => {
-            updateAllWaterPriceHelpTexts();
             updateAllServicePrices();
-            updateAllServicePriceButtons();
         });
     }
 
