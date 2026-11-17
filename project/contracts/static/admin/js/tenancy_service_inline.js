@@ -116,6 +116,34 @@
         });
     }
 
+    /**
+     * Show the water number start reading field only when selected room has water meter.
+     */
+    function updateWaterNumberStartReadingVisibility() {
+        let display = true;
+        const roomSelect = document.querySelector("#id_room");
+
+        if (!roomSelect || !roomSelect.value) {
+            display = false;
+        } else {
+            const hasWaterMeter =
+            roomSelect.selectedOptions[0]?.dataset.hasWaterMeter;
+
+            if (hasWaterMeter === "true") {
+                display = true;
+            } else {
+                display = false;
+            }
+        }
+        document.querySelectorAll(".field-water_number_start_reading").forEach((field) => {
+            if (display) {
+                field.style.display = "";
+            } else {
+                field.style.display = "none";
+            }
+        });
+    }
+
     function updateAllServicePrices(root = document) {
         SERVICE_FIELDS.forEach(({ toggle, price }) => {
             root.querySelectorAll(
@@ -124,7 +152,6 @@
                 updateServicePrice(toggle, price, input);
             });
         });
-        updateParkingPriceVisibility();
     }
 
     function handleVehiclePlateNumbersChange(event) {
@@ -406,6 +433,8 @@
         // Apply the initial state when the page loads.
         updateWaterPriceHelpText();
         updateAllServicePrices();
+        updateParkingPriceVisibility();
+        updateWaterNumberStartReadingVisibility();
         updateAllServicePriceButtons();
 
         // Handle water price help text updates based on room selection.
@@ -413,6 +442,7 @@
         if (!roomSelect) return;
         roomSelect.addEventListener("change", () => {
             updateWaterPriceHelpText();
+            updateWaterNumberStartReadingVisibility();
             updateWaterPriceButtonVisibility();
         });
         
