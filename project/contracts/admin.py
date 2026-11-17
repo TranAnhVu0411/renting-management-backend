@@ -92,6 +92,14 @@ class TenancyTenantInline(TabularInline):
 
 
 class TenancyServiceInlineForm(forms.ModelForm):
+    show_required = (
+        "water_number_start_reading",
+        "parking_price",
+        "internet_price",
+        "laundry_price",
+        "cleaner_price",
+    )
+
     class Meta:
         model = TenancyService
         fields = "__all__"
@@ -109,6 +117,7 @@ class TenancyServiceInlineForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        # Set help text for water_price field based on whether the room has a water meter
         room = None
         if self.instance.tenancy_id:
             room = self.instance.tenancy.room
@@ -121,6 +130,23 @@ class TenancyServiceInlineForm(forms.ModelForm):
             )
         else:
             self.fields["water_price"].help_text = "Giá nước"
+
+        # Set required attribute and remove HTML required for specified fields
+        for name in self.show_required:
+            self.fields[name].required = True
+            self.fields[name].widget.is_required = False
+
+    def full_clean(self):
+        # Temporarily disable required validation for specified fields to allow empty values to pass initial validation
+        required_backup = {}
+        for name in self.show_required:
+            required_backup[name] = self.fields[name].required
+            self.fields[name].required = False
+        try:
+            super().full_clean()
+        finally:
+            for name, val in required_backup.items():
+                self.fields[name].required = val
 
     def clean(self):
         cleaned_data = super().clean()
