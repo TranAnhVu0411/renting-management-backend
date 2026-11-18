@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget, UnfoldAdminSelectWidget
 from unfold.decorators import action
@@ -117,24 +118,26 @@ class TenancyServiceInlineForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Set help text for water_price field based on whether the room has a water meter
-        room = None
-        if self.instance.tenancy_id:
-            room = self.instance.tenancy.room
+        # Set help text for water_price field based on whether the room has a water meter (If the tenancy is draft update or newly created)
+        # For the case of viewing an official tenancy, water_price field will be replaced to water_price_display field, so this logic will not be executed 
+        if "water_price" in self.fields:
+            tenancy = self.instance.tenancy if self.instance.tenancy_id else None
+            room = tenancy.room if tenancy else None
 
-        if room and room.has_water_meter is not None:
-            self.fields["water_price"].help_text = (
-                "Giá nước (VND/m³)"
-                if room.has_water_meter
-                else "Giá nước (VND/người/tháng)"
-            )
-        else:
-            self.fields["water_price"].help_text = "Giá nước"
+            if room and room.has_water_meter is not None:
+                self.fields["water_price"].help_text = (
+                    "Giá nước (VND/m³)"
+                    if room.has_water_meter
+                    else "Giá nước (VND/người/tháng)"
+                )
+            else:
+                self.fields["water_price"].help_text = "Giá nước"
 
         # Set required attribute and remove HTML required for specified fields
         for name in self.show_required:
-            self.fields[name].required = True
-            self.fields[name].widget.is_required = False
+            if name in self.fields:
+                self.fields[name].required = True
+                self.fields[name].widget.is_required = False
 
     def full_clean(self):
         # Temporarily disable required validation for specified fields to allow empty values to pass initial validation
@@ -218,6 +221,56 @@ class TenancyServiceInline(StackedInline):
             },
         ),
     ]
+
+    # Setup readonly water_price field if the tenancy is official (form is readonly)
+    @admin.display(description="Water price")
+    def water_price_display(self, instance):
+        help_text = (
+            "Giá nước (VND/người/tháng)"
+            if instance.is_water_flat_fee
+            else "Giá nước (VND/m³)"
+        )
+
+        return format_html(
+            '<div class="font-medium">{}</div>' '<p class="help">{}</p>',
+            instance.water_price,
+            help_text,
+        )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if not obj or obj.status == Tenancy.Status.DRAFT:
+            return fieldsets
+
+        updated_fieldsets = []
+
+        for title, options in fieldsets:
+            fields = []
+
+            for item in options["fields"]:
+                # Replace water_price field with water_price_display field for official tenancy
+                if isinstance(item, (tuple, list)):
+                    item = tuple(
+                        "water_price_display" if field == "water_price" else field
+                        for field in item
+                    )
+                elif item == "water_price":
+                    item = "water_price_display"
+
+                fields.append(item)
+
+            updated_fieldsets.append((title, {**options, "fields": fields}))
+
+        return updated_fieldsets
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+
+        if obj and obj.status != Tenancy.Status.DRAFT:
+            # Add water_price_display to readonly_fields for official tenancy
+            readonly_fields.append("water_price_display")
+
+        return readonly_fields
 
     class Media:
         js = ("admin/js/tenancy_service_inline.js",)
