@@ -5,6 +5,7 @@ from billing.models import (
     TenancyVehiclePeriod,
     TenancyTenantPeriod,
 )
+from properties.models import Room
 
 
 def create_tenancy_service_periods(tenancy, tenancy_service):
@@ -13,32 +14,31 @@ def create_tenancy_service_periods(tenancy, tenancy_service):
         [
             TenancyServicePeriod(
                 tenancy=tenancy,
-                service=TenancyServicePeriod.Service.WATER,
-                price=tenancy_service.water_price,
-                start_date=tenancy.start_date,
-                end_date=tenancy.end_date,
+                service=TenancyServicePeriod.Service.ELECTRICITY,
+                price=tenancy_service.electricity_price,
+                start_date=tenancy.contract_start_date,
+                end_date=tenancy.contract_end_date,
             ),
             TenancyServicePeriod(
                 tenancy=tenancy,
-                service=TenancyServicePeriod.Service.ELECTRICITY,
-                price=tenancy_service.electricity_price,
-                start_date=tenancy.start_date,
-                end_date=tenancy.end_date,
+                service=(
+                    TenancyServicePeriod.Service.WATER_FIXED
+                    if tenancy_service.is_water_flat_fee
+                    else TenancyServicePeriod.Service.WATER_METERED
+                ),
+                price=tenancy_service.water_price,
+                start_date=tenancy.contract_start_date,
+                end_date=tenancy.contract_end_date,
             ),
         ]
     )
-    if tenancy.vehicle_plate_numbers:
-        service_periods.append(
-            TenancyServicePeriod(
-                tenancy=tenancy,
-                service=TenancyServicePeriod.Service.PARKING,
-                price=tenancy_service.parking_price,
-                start_date=tenancy.start_date,
-                end_date=tenancy.end_date,
-            )
-        )
 
     other_services = [
+        (
+            TenancyServicePeriod.Service.PARKING,
+            tenancy.vehicle_plate_numbers,
+            tenancy_service.parking_price,
+        ),
         (
             TenancyServicePeriod.Service.INTERNET,
             tenancy_service.internet,
@@ -62,8 +62,8 @@ def create_tenancy_service_periods(tenancy, tenancy_service):
                     tenancy=tenancy,
                     service=service,
                     price=price,
-                    start_date=tenancy.start_date,
-                    end_date=tenancy.end_date,
+                    start_date=tenancy.contract_start_date,
+                    end_date=tenancy.contract_end_date,
                 )
             )
 
@@ -76,8 +76,8 @@ def create_tenancy_vehicle_periods(tenancy):
             TenancyVehiclePeriod(
                 tenancy=tenancy,
                 license_plate=plate_number,
-                start_date=tenancy.start_date,
-                end_date=tenancy.end_date,
+                start_date=tenancy.contract_start_date,
+                end_date=tenancy.contract_end_date,
             )
             for plate_number in tenancy.vehicle_plate_numbers
         ]
@@ -92,8 +92,8 @@ def create_tenancy_tenant_periods(tenancy, tenancy_tenants):
                 tenancy=tenancy,
                 tenant=item.tenant,
                 role=item.role,
-                start_date=tenancy.start_date,
-                end_date=tenancy.end_date,
+                start_date=tenancy.contract_start_date,
+                end_date=tenancy.contract_end_date,
             )
         )
     TenancyTenantPeriod.objects.bulk_create(tenant_periods)
@@ -115,3 +115,7 @@ def officialize_tenancy(tenancy_id):
 
     tenancy.status = Tenancy.Status.OFFICIAL
     tenancy.save()
+
+    room = Room.objects.get(pk=tenancy.room_id)
+    room.status = Room.Status.OCCUPY
+    room.save()

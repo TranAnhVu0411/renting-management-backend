@@ -39,7 +39,8 @@ class TenancyServicePeriod(models.Model):
         PARKING = "parking", "Gửi xe"
         INTERNET = "internet", "Internet"
         CLEANER = "cleaner", "Dọn dẹp"
-        WATER = "water", "Nước"
+        WATER_FIXED = "water_fixed", "Nước (cố định)"
+        WATER_METERED = "water_metered", "Nước (theo đồng hồ)"
         ELECTRICITY = "electricity", "Điện"
 
     class Meta:
