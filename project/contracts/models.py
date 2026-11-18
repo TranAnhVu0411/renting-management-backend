@@ -35,8 +35,17 @@ class Tenancy(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        updates = {
+            "is_water_flat_fee": not self.room.has_water_meter,
+        }
+
         if not self.vehicle_plate_numbers:
-            TenancyService.objects.filter(tenancy=self).update(parking_price=None)
+            updates["parking_price"] = None
+
+        if not self.room.has_water_meter:
+            updates["water_number_start_reading"] = None
+
+        TenancyService.objects.filter(tenancy=self).update(**updates)
 
     def __str__(self):
         return f"Tenancy ({self.id}) (From {self.contract_start_date} to {self.contract_end_date}) (Room {self.room.room_id})"
@@ -123,6 +132,9 @@ class TenancyService(models.Model):
             self.internet_price = None
         if not self.cleaner:
             self.cleaner_price = None
+        self.is_water_flat_fee = not self.tenancy.room.has_water_meter
+        if not self.tenancy.room.has_water_meter:
+            self.water_number_start_reading = None
 
     def save(self, *args, **kwargs):
         self._reset_unused_prices()
