@@ -1,6 +1,7 @@
 from django import forms
 from django.db.models import Q
 from django.contrib import admin
+from django.contrib.admin.utils import display_for_field
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
@@ -119,7 +120,7 @@ class TenancyServiceInlineForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         # Set help text for water_price field based on whether the room has a water meter (If the tenancy is draft update or newly created)
-        # For the case of viewing an official tenancy, water_price field will be replaced to water_price_display field, so this logic will not be executed 
+        # For the case of viewing an official tenancy, water_price field will be replaced to water_price_display field, so this logic will not be executed
         if "water_price" in self.fields:
             tenancy = self.instance.tenancy if self.instance.tenancy_id else None
             room = tenancy.room if tenancy else None
@@ -225,6 +226,13 @@ class TenancyServiceInline(StackedInline):
     # Setup readonly water_price field if the tenancy is official (form is readonly)
     @admin.display(description="Water price")
     def water_price_display(self, instance):
+        field = self.model._meta.get_field("water_price")
+
+        formatted_price = display_for_field(
+            instance.water_price,
+            field,
+            self.get_empty_value_display(),
+        )
         help_text = (
             "Giá nước (VND/người/tháng)"
             if instance.is_water_flat_fee
@@ -233,7 +241,7 @@ class TenancyServiceInline(StackedInline):
 
         return format_html(
             '<div class="font-medium">{}</div>' '<p class="help">{}</p>',
-            instance.water_price,
+            formatted_price,
             help_text,
         )
 

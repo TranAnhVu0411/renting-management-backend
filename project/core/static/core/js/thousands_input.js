@@ -1,32 +1,28 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const inputs = document.querySelectorAll("input[data-thousands]");
+  document.querySelectorAll("input[data-thousands]").forEach((input) => {
+    const ts = input.dataset.thousandSep || ",";
+    const ds = input.dataset.decimalSep || ".";
 
-  const format = (raw) => {
-    let clean = raw.replace(/[^\d.]/g, "");           // drop letters/symbols
-    const [int, ...rest] = clean.split(".");           // keep only first dot
-    const dec = rest.length ? "." + rest.join("") : "";
-    return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + dec;
-  };
+    const isKept = (ch) => /\d/.test(ch) || ch === ds;
+    const clean = (s) => [...s].filter(isKept).join("");
 
-  inputs.forEach((input) => {
+    const format = (raw) => {
+      const [int, ...rest] = clean(raw).split(ds); // keep only first decimal dot
+      const dec = rest.length ? ds + rest.join("") : "";
+      return int.replace(/\B(?=(\d{3})+(?!\d))/g, ts) + dec;
+    };
+
     input.addEventListener("input", () => {
       const pos = input.selectionStart;
-      // count meaningful chars before the caret
-      const before = input.value.slice(0, pos).replace(/[^\d.]/g, "").length;
+      const before = clean(input.value.slice(0, pos)).length;
       input.value = format(input.value);
 
-      // restore caret after the same number of meaningful chars
       let count = 0, newPos = 0;
       while (newPos < input.value.length && count < before) {
-        if (/[\d.]/.test(input.value[newPos])) count++;
+        if (isKept(input.value[newPos])) count++;
         newPos++;
       }
       input.setSelectionRange(newPos, newPos);
-    });
-
-    // send plain numbers to the server
-    input.form?.addEventListener("submit", () => {
-      inputs.forEach((i) => (i.value = i.value.replace(/,/g, "")));
     });
   });
 });
