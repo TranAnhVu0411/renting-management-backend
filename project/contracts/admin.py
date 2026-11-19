@@ -144,8 +144,9 @@ class TenancyServiceInlineForm(forms.ModelForm):
         # Temporarily disable required validation for specified fields to allow empty values to pass initial validation
         required_backup = {}
         for name in self.show_required:
-            required_backup[name] = self.fields[name].required
-            self.fields[name].required = False
+            if name in self.fields:
+                required_backup[name] = self.fields[name].required
+                self.fields[name].required = False
         try:
             super().full_clean()
         finally:
@@ -249,21 +250,37 @@ class TenancyServiceInline(StackedInline):
         fieldsets = super().get_fieldsets(request, obj)
         if not obj or obj.status == Tenancy.Status.DRAFT:
             return fieldsets
-
+        tenancy_service = obj.services
         updated_fieldsets = []
 
         for title, options in fieldsets:
             fields = []
 
             for item in options["fields"]:
-                # Replace water_price field with water_price_display field for official tenancy
                 if isinstance(item, (tuple, list)):
-                    item = tuple(
-                        "water_price_display" if field == "water_price" else field
-                        for field in item
-                    )
-                elif item == "water_price":
-                    item = "water_price_display"
+                    # Replace water_price field with water_price_display field for official tenancy
+                    if "water_price" in item:
+                        if tenancy_service.is_water_flat_fee:
+                            item = "water_price_display"
+                        else:
+                            item = tuple(
+                                (
+                                    "water_price_display"
+                                    if field == "water_price"
+                                    else field
+                                )
+                                for field in item
+                            )
+                    # Skip laundry, internet, and cleaner fields if the service is not available
+                    if "laundry" in item and not tenancy_service.laundry:
+                        item = ("laundry",)
+                    if "internet" in item and not tenancy_service.internet:
+                        item = ("internet",)
+                    if "cleaner" in item and not tenancy_service.cleaner:
+                        item = ("cleaner",)
+                # Skip parking_price field if there are no vehicle plate numbers
+                elif item == "parking_price" and not obj.vehicle_plate_numbers:
+                    continue
 
                 fields.append(item)
 

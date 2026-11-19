@@ -85,7 +85,10 @@ class TenancyService(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenancy = models.OneToOneField(
-        Tenancy, on_delete=models.CASCADE, help_text="Hợp đồng thuê"
+        Tenancy,
+        on_delete=models.CASCADE,
+        help_text="Hợp đồng thuê",
+        related_name="services",
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
     electricity_price = models.PositiveIntegerField(help_text="Giá điện (VND/kWh)")
