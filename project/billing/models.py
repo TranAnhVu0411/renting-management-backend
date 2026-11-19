@@ -24,6 +24,7 @@ class TenancyTenantPeriod(models.Model):
         choices=Role.choices,
         help_text="Vai trò của người thuê trong hợp đồng",
     )
+    note = models.TextField(help_text="Ghi chú", null=True, blank=True)
     start_date = models.DateField(help_text="Ngày bắt đầu thuê")
     end_date = models.DateField(help_text="Ngày kết thúc thuê")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Ngày tạo")
@@ -62,6 +63,7 @@ class TenancyServicePeriod(models.Model):
         null=True,
         blank=True,
     )
+    note = models.TextField(help_text="Ghi chú", null=True, blank=True)
     start_date = models.DateField(help_text="Ngày bắt đầu tính phí dịch vụ")
     end_date = models.DateField(help_text="Ngày kết thúc tính phí dịch vụ")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Ngày tạo")
@@ -82,6 +84,7 @@ class TenancyVehiclePeriod(models.Model):
         help_text="Hợp đồng thuê",
     )
     license_plate = models.CharField(max_length=20, help_text="Biển số xe")
+    note = models.TextField(help_text="Ghi chú", null=True, blank=True)
     start_date = models.DateField(help_text="Ngày bắt đầu gửi xe")
     end_date = models.DateField(help_text="Ngày kết thúc gửi xe")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Ngày tạo")

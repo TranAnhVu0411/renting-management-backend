@@ -18,6 +18,7 @@ def create_tenancy_service_periods(tenancy, tenancy_service):
                 price=tenancy_service.electricity_price,
                 start_date=tenancy.contract_start_date,
                 end_date=tenancy.contract_end_date,
+                note="Initialize",
             ),
             TenancyServicePeriod(
                 tenancy=tenancy,
@@ -29,6 +30,7 @@ def create_tenancy_service_periods(tenancy, tenancy_service):
                 price=tenancy_service.water_price,
                 start_date=tenancy.contract_start_date,
                 end_date=tenancy.contract_end_date,
+                note="Initialize",
             ),
         ]
     )
@@ -64,6 +66,7 @@ def create_tenancy_service_periods(tenancy, tenancy_service):
                     price=price,
                     start_date=tenancy.contract_start_date,
                     end_date=tenancy.contract_end_date,
+                    note="Initialize",
                 )
             )
 
@@ -78,6 +81,7 @@ def create_tenancy_vehicle_periods(tenancy):
                 license_plate=plate_number,
                 start_date=tenancy.contract_start_date,
                 end_date=tenancy.contract_end_date,
+                note="Initialize",
             )
             for plate_number in tenancy.vehicle_plate_numbers
         ]
@@ -94,6 +98,7 @@ def create_tenancy_tenant_periods(tenancy, tenancy_tenants):
                 role=item.role,
                 start_date=tenancy.contract_start_date,
                 end_date=tenancy.contract_end_date,
+                note="Initialize",
             )
         )
     TenancyTenantPeriod.objects.bulk_create(tenant_periods)
