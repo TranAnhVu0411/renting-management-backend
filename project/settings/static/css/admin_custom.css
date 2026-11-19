@@ -1,16 +1,22 @@
 .form-row.field-row {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-start; /* Align items to the start of the cross axis (for checkbox and input, since checkbox is center aligned */
     border-bottom: 1px dashed var(--color-base-200);
 }
 
-.form-row.field-row > .field-line {
-    flex: 1;
-    border-bottom: 0;
+.form-row.field-row:last-child {
+    border-bottom: none;
 }
 
-@media (min-width: 1024px) {
+.form-row.field-row > .field-line {
+    flex: 1; /* Allow field line to grow and fill available space evenly */
+    border-bottom: 0;
+    min-width: 0;
+    width: 100%;
+}
+
+@media (min-width: 640px) {
     .form-row.field-row {
         flex-direction: row;
     }

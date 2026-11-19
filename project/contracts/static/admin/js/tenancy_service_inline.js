@@ -4,31 +4,56 @@
     /**
      * Update the water price help text based on the flat fee toggle.
      */
-    function updateWaterPriceHelpText(toggleInput) {
-        const field = toggleInput.closest(".form-row.field-row");
+    const WATER_PRICE_HELP_TEXT = {
+        default: "Giá nước",
+        metered: "Giá nước (VND/m³)",
+        flatFee: "Giá nước (VND/người/tháng)",
+    };
 
-        if (!field) return;
+    function queryAllIncludingRoot(root, selector) {
+        const elements = [];
 
-        const waterPriceField = field.querySelector(".field-water_price");
+        if (root instanceof Element && root.matches(selector)) {
+            elements.push(root);
+        }
 
-        if (!waterPriceField) return;
+        elements.push(...root.querySelectorAll(selector));
 
-        const helpText = waterPriceField.querySelector(
-            ".leading-relaxed.mt-2.text-xs"
-        );
-
-        if (!helpText) return;
-
-        helpText.textContent = toggleInput.checked
-            ? "Giá nước (khoán)"
-            : "Giá nước (theo m3)";
+        return elements;
     }
 
-    function updateAllWaterPriceHelpTexts(root = document) {
-        root.querySelectorAll(
-            '.field-is_water_flat_fee input[type="checkbox"]'
-        ).forEach((input) => {
-            updateWaterPriceHelpText(input);
+    function getWaterPriceHelpText() {
+        const roomSelect = document.querySelector("#id_room");
+
+        if (!roomSelect || !roomSelect.value) {
+            return WATER_PRICE_HELP_TEXT.default;
+        }
+
+        const hasWaterMeter =
+            roomSelect.selectedOptions[0]?.dataset.hasWaterMeter;
+
+        if (hasWaterMeter === "true") {
+            return WATER_PRICE_HELP_TEXT.metered;
+        }
+
+        if (hasWaterMeter === "false") {
+            return WATER_PRICE_HELP_TEXT.flatFee;
+        }
+
+        return WATER_PRICE_HELP_TEXT.default;
+    }
+
+    function updateWaterPriceHelpText(root = document) {
+        const helpTextContent = getWaterPriceHelpText();
+
+        queryAllIncludingRoot(root, ".field-water_price").forEach((field) => {
+            const helpText = field.querySelector(
+                ".leading-relaxed.mt-2.text-xs"
+            );
+
+            if (helpText && helpText.textContent !== helpTextContent) {
+                helpText.textContent = helpTextContent;
+            }
         });
     }
 
@@ -91,6 +116,34 @@
         });
     }
 
+    /**
+     * Show the water number start reading field only when selected room has water meter.
+     */
+    function updateWaterNumberStartReadingVisibility() {
+        let display = true;
+        const roomSelect = document.querySelector("#id_room");
+
+        if (!roomSelect || !roomSelect.value) {
+            display = false;
+        } else {
+            const hasWaterMeter =
+            roomSelect.selectedOptions[0]?.dataset.hasWaterMeter;
+
+            if (hasWaterMeter === "true") {
+                display = true;
+            } else {
+                display = false;
+            }
+        }
+        document.querySelectorAll(".field-water_number_start_reading").forEach((field) => {
+            if (display) {
+                field.style.display = "";
+            } else {
+                field.style.display = "none";
+            }
+        });
+    }
+
     function updateAllServicePrices(root = document) {
         SERVICE_FIELDS.forEach(({ toggle, price }) => {
             root.querySelectorAll(
@@ -99,7 +152,6 @@
                 updateServicePrice(toggle, price, input);
             });
         });
-        updateParkingPriceVisibility();
     }
 
     function handleVehiclePlateNumbersChange(event) {
@@ -190,13 +242,18 @@
             return fieldName;
         }
 
-        const row = input.closest(".form-row.field-row");
+        const roomSelect = document.querySelector("#id_room");
+        const selectedOption = roomSelect?.selectedOptions[0];
 
-        const flatFeeToggle = row?.querySelector(
-            '.field-is_water_flat_fee input[type="checkbox"]'
-        );
+        // If no room is selected or the room information is not available, return null.
+        if (!selectedOption?.value) {
+            return null;
+        }
 
-        return flatFeeToggle?.checked
+        const hasWaterMeter =
+            roomSelect?.selectedOptions[0]?.dataset.hasWaterMeter;
+
+        return hasWaterMeter === "false"
             ? "water_flat_fee"
             : "water_price";
     }
@@ -281,6 +338,7 @@
 
         button.title = "Lấy giá mặc định";
         button.setAttribute("aria-label", "Lấy giá mặc định");
+        button.dataset.servicePriceButton = "true";
 
         button.innerHTML = `
             <span class="material-symbols-outlined text-base">
@@ -313,8 +371,39 @@
                 `.field-${fieldName} input:not([type="hidden"])`
             ).forEach((input) => {
                 createServicePriceButton(input);
+                if (fieldName === "water_price") {
+                    updateWaterPriceButtonVisibility();
+                }
             });
         });
+    }
+
+    function updateWaterPriceButtonVisibility() {
+        const input = document.querySelector(
+            ".field-water_price input"
+        );
+
+        if (!input) {
+            return;
+        }
+
+        const button = input.parentElement.querySelector(
+            "[data-service-price-button]"
+        );
+
+        if (!button) {
+            return;
+        }
+
+        const roomSelect = document.querySelector("#id_room");
+        const selectedOption = roomSelect?.selectedOptions[0];
+
+        const hasWaterMeter = selectedOption?.dataset.hasWaterMeter;
+
+        button.hidden = !(
+            selectedOption?.value &&
+            (hasWaterMeter === "true" || hasWaterMeter === "false")
+        );
     }
 
     function handleChange(event) {
@@ -338,18 +427,25 @@
                 input
             );
         }
-
-        if (input.closest(".field-is_water_flat_fee")) {
-            updateWaterPriceHelpText(input);
-        }
     }
 
     function init() {
         // Apply the initial state when the page loads.
-        updateAllWaterPriceHelpTexts();
+        updateWaterPriceHelpText();
         updateAllServicePrices();
+        updateParkingPriceVisibility();
+        updateWaterNumberStartReadingVisibility();
         updateAllServicePriceButtons();
 
+        // Handle water price help text updates based on room selection.
+         const roomSelect = document.querySelector("#id_room");
+        if (!roomSelect) return;
+        roomSelect.addEventListener("change", () => {
+            updateWaterPriceHelpText();
+            updateWaterNumberStartReadingVisibility();
+            updateWaterPriceButtonVisibility();
+        });
+        
         // Handle checkbox changes, including dynamically added inline forms.
         document.addEventListener("change", handleChange);
         
@@ -357,33 +453,11 @@
         document.addEventListener("input", handleVehiclePlateNumbersChange);
         document.addEventListener("change", handleVehiclePlateNumbersChange);
 
-        // Handle inline rows added dynamically by Django Admin.
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        updateAllWaterPriceHelpTexts(node);
-                        updateAllServicePrices(node);
-                        updateAllServicePriceButtons(node);
-                    }
-                });
-            });
-
-            updateParkingPriceVisibility();
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-        });
-        
         // Update service prices when the screen size changes.
         const mediaQuery = window.matchMedia("(min-width: 1024px)");
 
         mediaQuery.addEventListener("change", () => {
-            updateAllWaterPriceHelpTexts();
             updateAllServicePrices();
-            updateAllServicePriceButtons();
         });
     }
 

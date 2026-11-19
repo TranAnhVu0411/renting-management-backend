@@ -7,6 +7,7 @@ class RoomConditionsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Room
         fields = (
+            "has_water_meter",
             "allow_co_tenant",
             "co_tenant_maximum",
         )

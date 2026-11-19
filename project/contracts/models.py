@@ -7,8 +7,14 @@ from properties.models import Room
 
 
 class Tenancy(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Nháp"
+        OFFICIAL = "official", "Chính thức"
+        OUTDATE = "outdate", "Hết hạn"
+        TERMINATE = "terminate", "Chấm dứt"
+
     class Meta:
-        ordering = ["room", "start_date", "end_date"]
+        ordering = ["room", "contract_start_date", "contract_end_date"]
         verbose_name_plural = "Tenancies"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -16,30 +22,40 @@ class Tenancy(models.Model):
     vehicle_plate_numbers = ArrayField(
         models.CharField(max_length=20), help_text="Biển số xe", null=True, blank=True
     )
-    start_date = models.DateField(null=True, blank=True, help_text="Ngày bắt đầu thuê")
-    end_date = models.DateField(null=True, blank=True, help_text="Ngày kết thúc thuê")
+    contract_start_date = models.DateField(help_text="Ngày hợp đồng có hiệu lực")
+    contract_end_date = models.DateField(help_text="Ngày hợp đồng hết hiệu lực")
+    billing_start_date = models.DateField(help_text="Ngày bắt đầu tính phí thuê nhà")
+    deposit = models.PositiveIntegerField(help_text="Tiền đặt cọc")
     status = models.CharField(
         max_length=20,
-        choices=[
-            ("draft", "Nháp"),
-            ("official", "Chính thức"),
-            ("outdate", "Hết hạn"),
-            ("terminate", "Chấm dứt"),
-        ],
-        default="draft",
+        choices=Status.choices,
+        default=Status.DRAFT,
         help_text="Trạng thái hợp đồng",
     )
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+        updates = {
+            "is_water_flat_fee": not self.room.has_water_meter,
+        }
+
         if not self.vehicle_plate_numbers:
-            TenancyService.objects.filter(tenancy=self).update(parking_price=None)
+            updates["parking_price"] = None
+
+        if not self.room.has_water_meter:
+            updates["water_number_start_reading"] = None
+
+        TenancyService.objects.filter(tenancy=self).update(**updates)
 
     def __str__(self):
-        return f"Tenancy ({self.id}) (From {self.start_date} to {self.end_date}) (Room {self.room.room_id})"
+        return f"Tenancy ({self.id}) (From {self.contract_start_date} to {self.contract_end_date}) (Room {self.room.room_id})"
 
 
 class TenancyTenant(models.Model):
+    class Role(models.TextChoices):
+        PRIMARY = "primary", "Chính"
+        CO_TENANT = "co-tenant", "Ở ghép"
+
     class Meta:
         ordering = ["tenancy", "tenant", "role"]
         verbose_name_plural = "Tenancy Tenants"
@@ -54,11 +70,8 @@ class TenancyTenant(models.Model):
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, help_text="Người thuê")
     role = models.CharField(
         max_length=20,
-        choices=[("primary", "Chính"), ("co-tenant", "Ở ghép")],
+        choices=Role.choices,
         help_text="Vai trò của người thuê trong hợp đồng",
-    )
-    active = models.BooleanField(
-        default=True, help_text="Trạng thái hoạt động của người thuê trong hợp đồng"
     )
 
     def __str__(self):
@@ -72,34 +85,43 @@ class TenancyService(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     tenancy = models.OneToOneField(
-        Tenancy, on_delete=models.CASCADE, help_text="Hợp đồng thuê"
+        Tenancy,
+        on_delete=models.CASCADE,
+        help_text="Hợp đồng thuê",
+        related_name="services",
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
-    electricity_price = models.PositiveIntegerField(help_text="Giá điện (theo kWh)")
+    electricity_price = models.PositiveIntegerField(help_text="Giá điện (VND/kWh)")
+    electricity_number_start_reading = models.PositiveIntegerField(
+        help_text="Chỉ số điện bắt đầu tính (kWh)"
+    )
     water_price = models.PositiveIntegerField(help_text="Giá nước")
+    water_number_start_reading = models.PositiveIntegerField(
+        help_text="Chỉ số nước bắt đầu tính (m³)", null=True, blank=True
+    )
     is_water_flat_fee = models.BooleanField(
         default=False, help_text="Có tính phí nước cố định"
     )
     laundry = models.BooleanField(default=False, help_text="Dịch vụ giặt là")
     laundry_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ giặt là",
+        help_text="Giá dịch vụ giặt là (VND/người/tháng)",
         null=True,
         blank=True,
     )
     parking_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ gửi xe",
+        help_text="Giá dịch vụ gửi xe (VND/phương tiện/tháng)",
         null=True,
         blank=True,
     )
     internet = models.BooleanField(default=False, help_text="Dịch vụ internet")
     internet_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ internet",
+        help_text="Giá dịch vụ internet (VND/người/tháng)",
         null=True,
         blank=True,
     )
     cleaner = models.BooleanField(default=False, help_text="Dịch vụ dọn dẹp")
     cleaner_price = models.PositiveIntegerField(
-        help_text="Giá dịch vụ dọn dẹp",
+        help_text="Giá dịch vụ dọn dẹp (VND/người/tháng)",
         null=True,
         blank=True,
     )
@@ -113,6 +135,9 @@ class TenancyService(models.Model):
             self.internet_price = None
         if not self.cleaner:
             self.cleaner_price = None
+        self.is_water_flat_fee = not self.tenancy.room.has_water_meter
+        if not self.tenancy.room.has_water_meter:
+            self.water_number_start_reading = None
 
     def save(self, *args, **kwargs):
         self._reset_unused_prices()
@@ -133,17 +158,17 @@ class ServicePriceRule(models.Model):
         default=1,
         editable=False,
     )
-    electric_price = models.PositiveIntegerField(
+    electricity_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá điện (theo kWh)",
+        verbose_name="Giá điện (VND/kWh)",
     )
     water_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá nước (theo m³)",
+        verbose_name="Giá nước (VND/m³)",
     )
     water_flat_fee = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá nước cố định (VND)",
+        verbose_name="Giá nước cố định (VND/người/tháng)",
     )
     parking_price = models.PositiveIntegerField(
         default=0,
@@ -151,15 +176,15 @@ class ServicePriceRule(models.Model):
     )
     laundry_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ giặt là (VND)",
+        verbose_name="Giá dịch vụ giặt là (VND/người/tháng)",
     )
     internet_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ internet (VND)",
+        verbose_name="Giá dịch vụ internet (VND/người/tháng)",
     )
     cleaner_price = models.PositiveIntegerField(
         default=0,
-        verbose_name="Giá dịch vụ dọn dẹp (VND)",
+        verbose_name="Giá dịch vụ dọn dẹp (VND/người/tháng)",
     )
 
     created_at = models.DateTimeField(auto_now_add=True)

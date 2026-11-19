@@ -14,6 +14,11 @@ class Room(models.Model):
             )
         ]
 
+    class Status(models.TextChoices):
+        EMPTY = "empty", "Trống"
+        OCCUPY = "occupy", "Đang cho thuê"
+        MAINTENANCE = "maintenance", "Đang bảo trì"
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room_id = models.CharField(max_length=150, unique=True, help_text="Mã số phòng")
     allow_co_tenant = models.BooleanField(
@@ -28,14 +33,14 @@ class Room(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Diện tích phòng (m2)",
     )
+    has_water_meter = models.BooleanField(
+        default=True,
+        help_text="Phòng có đồng hồ nước riêng",
+    )
     status = models.CharField(
         max_length=30,
-        choices=[
-            ("empty", "Trống"),
-            ("occupy", "Đang cho thuê"),
-            ("maintenance", "Đang bảo trì"),
-        ],
-        default="empty",
+        choices=Status.choices,
+        default=Status.EMPTY,
         help_text="Trạng thái phòng",
     )
 

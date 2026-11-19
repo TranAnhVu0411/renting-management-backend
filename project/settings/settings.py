@@ -46,16 +46,18 @@ INSTALLED_APPS = [
     'allauth',
     'allauth.account',
     'allauth.headless',
-    'users',
+    'core',
     'tenants',
     'properties',
     'contracts',
+    'billing',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "django.middleware.locale.LocaleMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -127,13 +129,22 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'vi'
+
+LANGUAGES = [
+    ("vi", "Tiếng Việt"),
+    ("en", "English"),
+]
 
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
 USE_TZ = True
+
+FORMAT_MODULE_PATH = [
+    "settings.locale_formats",
+]
 
 
 # Static files (CSS, JavaScript, Images)
@@ -146,11 +157,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Unfold settings for custom admin styles
 UNFOLD = {
+    "SHOW_LANGUAGES": True,
     "STYLES": [
         lambda request: static("css/admin_custom.css"),
     ],
 }
+USE_THOUSAND_SEPARATOR = True
 
 # Source - https://stackoverflow.com/a/30173694
 AUTHENTICATION_BACKENDS = (

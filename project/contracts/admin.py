@@ -1,16 +1,21 @@
 from django import forms
 from django.db.models import Q
 from django.contrib import admin
+from django.contrib.admin.utils import display_for_field
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import reverse, path
+from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
-from unfold.contrib.forms.widgets import ArrayWidget
+from unfold.contrib.forms.widgets import ArrayWidget, UnfoldAdminSelectWidget
+from unfold.decorators import action
 
 from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
+from .services.tenancy import officialize_tenancy
 from properties.models import Room
+from core.widgets import ThousandsInput, LocalizedDateInputWidget
 
 
 class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
@@ -22,8 +27,6 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
 
         primary_count = 0
         cotenant_count = 0
-        is_primary_tenant_active = False
-        active_count = 0
         seen_tenant_ids = set()
 
         for form in self.forms:
@@ -48,28 +51,17 @@ class TenancyTenantInlineFormSet(forms.models.BaseInlineFormSet):
                 seen_tenant_ids.add(tenant.pk)
 
             role = form.cleaned_data.get("role")
-            active = form.cleaned_data.get("active")
 
             if role == "primary":
                 primary_count += 1
-                if active:
-                    is_primary_tenant_active = True
             if role == "co-tenant":
                 cotenant_count += 1
-            if active:
-                active_count += 1
 
         if primary_count == 0:
             raise ValidationError("One Tenancy must have one primary tenant.")
 
         if primary_count > 1:
             raise ValidationError("One Tenancy can only have one primary tenant.")
-
-        if active_count == 0:
-            raise ValidationError("One Tenancy must have at least one active tenant.")
-
-        if not is_primary_tenant_active:
-            raise ValidationError("The primary tenant must be active.")
 
         room_id = self.data.get("room")
         if not room_id:
@@ -93,30 +85,73 @@ class TenancyTenantInline(TabularInline):
     formset = TenancyTenantInlineFormSet
     extra = 0
     autocomplete_fields = ("tenant",)
-    fields = ("tenant", "role", "active")
+    fields = ("tenant", "role")
     show_change_link = True
     show_title = False
 
     class Media:
-        js = ("admin/js/tenancy_tenant_autocomplete.js",)
+        js = ("admin/js/tenancy_tenant_inline.js",)
 
 
 class TenancyServiceInlineForm(forms.ModelForm):
+    show_required = (
+        "water_number_start_reading",
+        "parking_price",
+        "internet_price",
+        "laundry_price",
+        "cleaner_price",
+    )
+
     class Meta:
         model = TenancyService
         fields = "__all__"
+        localized_fields = (
+            "rent_price",
+            "electricity_price",
+            "water_price",
+            "parking_price",
+            "laundry_price",
+            "internet_price",
+            "cleaner_price",
+        )
+        widgets = {name: ThousandsInput() for name in localized_fields}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        is_water_flat_fee = self.initial.get(
-            "is_water_flat_fee",
-            self.instance.is_water_flat_fee,
-        )
+        # Set help text for water_price field based on whether the room has a water meter (If the tenancy is draft update or newly created)
+        # For the case of viewing an official tenancy, water_price field will be replaced to water_price_display field, so this logic will not be executed
+        if "water_price" in self.fields:
+            tenancy = self.instance.tenancy if self.instance.tenancy_id else None
+            room = tenancy.room if tenancy else None
 
-        self.fields["water_price"].help_text = (
-            "Giá nước (khoán)" if is_water_flat_fee else "Giá nước (theo m3)"
-        )
+            if room and room.has_water_meter is not None:
+                self.fields["water_price"].help_text = (
+                    "Giá nước (VND/m³)"
+                    if room.has_water_meter
+                    else "Giá nước (VND/người/tháng)"
+                )
+            else:
+                self.fields["water_price"].help_text = "Giá nước"
+
+        # Set required attribute and remove HTML required for specified fields
+        for name in self.show_required:
+            if name in self.fields:
+                self.fields[name].required = True
+                self.fields[name].widget.is_required = False
+
+    def full_clean(self):
+        # Temporarily disable required validation for specified fields to allow empty values to pass initial validation
+        required_backup = {}
+        for name in self.show_required:
+            if name in self.fields:
+                required_backup[name] = self.fields[name].required
+                self.fields[name].required = False
+        try:
+            super().full_clean()
+        finally:
+            for name, val in required_backup.items():
+                self.fields[name].required = val
 
     def clean(self):
         cleaned_data = super().clean()
@@ -136,6 +171,14 @@ class TenancyServiceInlineForm(forms.ModelForm):
                 self.add_error(
                     price_field,
                     f"{label} price is required.",
+                )
+
+        room = tenancy.room if tenancy and tenancy.room_id else None
+        if room and room.has_water_meter:
+            if cleaned_data.get("water_number_start_reading") is None:
+                self.add_error(
+                    "water_number_start_reading",
+                    "Water number start reading is required.",
                 )
 
         return cleaned_data
@@ -164,8 +207,8 @@ class TenancyServiceInline(StackedInline):
             {
                 "fields": [
                     "rent_price",
-                    "electricity_price",
-                    ("is_water_flat_fee", "water_price"),
+                    ("electricity_price", "electricity_number_start_reading"),
+                    ("water_price", "water_number_start_reading"),
                 ]
             },
         ),
@@ -182,23 +225,135 @@ class TenancyServiceInline(StackedInline):
         ),
     ]
 
+    # Setup readonly water_price field if the tenancy is official (form is readonly)
+    @admin.display(description="Water price")
+    def water_price_display(self, instance):
+        field = self.model._meta.get_field("water_price")
+
+        formatted_price = display_for_field(
+            instance.water_price,
+            field,
+            self.get_empty_value_display(),
+        )
+        help_text = (
+            "Giá nước (VND/người/tháng)"
+            if instance.is_water_flat_fee
+            else "Giá nước (VND/m³)"
+        )
+
+        return format_html(
+            '<div class="font-medium">{}</div>' '<p class="help">{}</p>',
+            formatted_price,
+            help_text,
+        )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        if not obj or obj.status == Tenancy.Status.DRAFT:
+            return fieldsets
+        tenancy_service = obj.services
+        updated_fieldsets = []
+
+        for title, options in fieldsets:
+            fields = []
+
+            for item in options["fields"]:
+                if isinstance(item, (tuple, list)):
+                    # Replace water_price field with water_price_display field for official tenancy
+                    if "water_price" in item:
+                        if tenancy_service.is_water_flat_fee:
+                            item = "water_price_display"
+                        else:
+                            item = tuple(
+                                (
+                                    "water_price_display"
+                                    if field == "water_price"
+                                    else field
+                                )
+                                for field in item
+                            )
+                    # Skip laundry, internet, and cleaner fields if the service is not available
+                    if "laundry" in item and not tenancy_service.laundry:
+                        item = ("laundry",)
+                    if "internet" in item and not tenancy_service.internet:
+                        item = ("internet",)
+                    if "cleaner" in item and not tenancy_service.cleaner:
+                        item = ("cleaner",)
+                # Skip parking_price field if there are no vehicle plate numbers
+                elif item == "parking_price" and not obj.vehicle_plate_numbers:
+                    continue
+
+                fields.append(item)
+
+            updated_fieldsets.append((title, {**options, "fields": fields}))
+
+        return updated_fieldsets
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly_fields = list(super().get_readonly_fields(request, obj))
+
+        if obj and obj.status != Tenancy.Status.DRAFT:
+            # Add water_price_display to readonly_fields for official tenancy
+            readonly_fields.append("water_price_display")
+
+        return readonly_fields
+
     class Media:
         js = ("admin/js/tenancy_service_inline.js",)
         css = {"all": ("admin/css/tenancy_service_inline.css",)}
+
+
+class RoomSelectWidget(UnfoldAdminSelectWidget):
+    def create_option(
+        self,
+        name,
+        value,
+        label,
+        selected,
+        index,
+        subindex=None,
+        attrs=None,
+    ):
+        option = super().create_option(
+            name,
+            value,
+            label,
+            selected,
+            index,
+            subindex,
+            attrs,
+        )
+
+        room = getattr(value, "instance", None)
+
+        if room:
+            option["attrs"]["data-has-water-meter"] = str(room.has_water_meter).lower()
+
+        return option
 
 
 class TenancyForm(forms.ModelForm):
     class Meta:
         model = Tenancy
         fields = "__all__"
+        widgets = {
+            "room": RoomSelectWidget(),
+            "contract_start_date": LocalizedDateInputWidget(),
+            "contract_end_date": LocalizedDateInputWidget(),
+            "billing_start_date": LocalizedDateInputWidget(),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
-        start_date = cleaned_data.get("start_date")
-        end_date = cleaned_data.get("end_date")
-        if start_date and end_date and start_date > end_date:
+        contract_start_date = cleaned_data.get("contract_start_date")
+        contract_end_date = cleaned_data.get("contract_end_date")
+        if (
+            contract_start_date
+            and contract_end_date
+            and contract_start_date > contract_end_date
+        ):
             self.add_error(
-                "end_date",
+                "contract_end_date",
                 "End date must be after start date.",
             )
 
@@ -215,8 +370,8 @@ class TenancyAdmin(ModelAdmin):
     list_display = (
         "primary_tenant",
         "room",
-        "start_date",
-        "end_date",
+        "contract_start_date",
+        "contract_end_date",
         "status",
     )
     list_filter = ("status",)
@@ -227,8 +382,8 @@ class TenancyAdmin(ModelAdmin):
     fields = (
         "room",
         "vehicle_plate_numbers",
-        ("start_date", "end_date"),
-        "status",
+        ("contract_start_date", "contract_end_date"),
+        ("billing_start_date", "deposit"),
     )
     formfield_overrides = {
         ArrayField: {
@@ -297,7 +452,7 @@ class TenancyAdmin(ModelAdmin):
 
         return JsonResponse(
             {
-                "electricity_price": rule.electric_price,
+                "electricity_price": rule.electricity_price,
                 "water_price": rule.water_price,
                 "water_flat_fee": rule.water_flat_fee,
                 "parking_price": rule.parking_price,
@@ -307,14 +462,52 @@ class TenancyAdmin(ModelAdmin):
             }
         )
 
+    actions_submit_line = ["changeform_officialize_tenancy_action"]
+
+    @action(
+        description="Officialize tenancy",
+        permissions=["officialize_tenancy_action"],
+    )
+    def changeform_officialize_tenancy_action(self, request, obj):
+        officialize_tenancy(obj.id)
+
+    def has_officialize_tenancy_action_permission(self, request, object_id):
+        if object_id:
+            tenancy = Tenancy.objects.get(pk=object_id)
+            if tenancy.status != Tenancy.Status.DRAFT:
+                return False
+        return True
+
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.status != Tenancy.Status.DRAFT:
+            return False
+        return super().has_change_permission(request, obj)
+
     class Media:
-        js = ("admin/js/room_condition.js",)
+        js = ("admin/js/tenancy.js",)
+
+
+class ServicePriceRuleForm(forms.ModelForm):
+    class Meta:
+        model = ServicePriceRule
+        fields = "__all__"
+        localized_fields = (
+            "electricity_price",
+            "water_price",
+            "water_flat_fee",
+            "parking_price",
+            "laundry_price",
+            "internet_price",
+            "cleaner_price",
+        )
+        widgets = {name: ThousandsInput() for name in localized_fields}
 
 
 @admin.register(ServicePriceRule)
 class ServicePriceRuleAdmin(ModelAdmin):
+    form = ServicePriceRuleForm
     list_display = (
-        "electric_price",
+        "electricity_price",
         "water_price",
         "water_flat_fee",
         "parking_price",

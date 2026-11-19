@@ -42,6 +42,7 @@ class RoomAdminForm(forms.ModelForm):
 class RoomAdmin(ModelAdmin):
     list_display = (
         "room_id",
+        "has_water_meter",
         "allow_co_tenant",
         "co_tenant_maximum",
         "area",
@@ -53,14 +54,16 @@ class RoomAdmin(ModelAdmin):
     form = RoomAdminForm
     conditional_fields = {"co_tenant_maximum": "allow_co_tenant == true"}
     fieldsets = (
-        (None, {"fields": ("room_id", "area")}),
+        (None, {"fields": ("room_id", "area", "has_water_meter")}),
         (
             "Thông tin ở ghép",
             {
-                "fields": (
-                    "allow_co_tenant",
-                    "co_tenant_maximum",
-                )
+                "fields": [
+                    (
+                        "allow_co_tenant",
+                        "co_tenant_maximum",
+                    )
+                ]
             },
         ),
         (
