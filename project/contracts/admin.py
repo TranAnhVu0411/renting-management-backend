@@ -173,7 +173,8 @@ class TenancyServiceInlineForm(forms.ModelForm):
                     f"{label} price is required.",
                 )
 
-        if bool(tenancy and tenancy.room.has_water_meter):
+        room = tenancy.room if tenancy and tenancy.room_id else None
+        if room and room.has_water_meter:
             if cleaned_data.get("water_number_start_reading") is None:
                 self.add_error(
                     "water_number_start_reading",
