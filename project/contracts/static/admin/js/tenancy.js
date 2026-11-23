@@ -47,7 +47,7 @@
             requestController = new AbortController();
 
             const url = urlTemplate.replace(
-                "ROOM_ID_PLACEHOLDER",
+                "00000000-0000-0000-0000-000000000000",
                 encodeURIComponent(roomId)
             );
 
