@@ -40,6 +40,10 @@ class Room(models.Model):
         help_text="Trạng thái phòng",
     )
 
+    @property
+    def has_water_meter(self):
+        return self.meters.filter(meter_type=RoomMeter.Type.WATER).exists()
+
     def __str__(self):
         return f"{self.room_id}"
 
