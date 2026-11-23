@@ -3,7 +3,7 @@ from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 from tenants.models import Tenant
-from properties.models import Room
+from properties.models import Room, RoomMeter
 
 
 class Tenancy(models.Model):
@@ -42,9 +42,6 @@ class Tenancy(models.Model):
         if not self.vehicle_plate_numbers:
             updates["parking_price"] = None
 
-        if not self.room.has_water_meter:
-            updates["water_number_start_reading"] = None
-
         TenancyService.objects.filter(tenancy=self).update(**updates)
 
     def __str__(self):
@@ -78,6 +75,32 @@ class TenancyTenant(models.Model):
         return f"Tenancy Tenant ({self.id})"
 
 
+class TenancyMeter(models.Model):
+    class Meta:
+        ordering = ["tenancy", "meter"]
+        verbose_name_plural = "Tenancy Meters"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    tenancy = models.ForeignKey(
+        "Tenancy",
+        on_delete=models.CASCADE,
+        help_text="Hợp đồng thuê",
+        related_name="meters",
+    )
+    meter = models.ForeignKey(
+        RoomMeter,
+        on_delete=models.CASCADE,
+        help_text="Đồng hồ phòng",
+        related_name="tenancies",
+    )
+    meter_reading = models.PositiveIntegerField(
+        help_text="Chỉ số đồng hồ tại thời điểm thuê"
+    )
+
+    def __str__(self):
+        return f"Tenancy Meter ({self.id})"
+
+
 class TenancyService(models.Model):
     class Meta:
         ordering = ["tenancy"]
@@ -92,13 +115,7 @@ class TenancyService(models.Model):
     )
     rent_price = models.PositiveIntegerField(help_text="Giá thuê")
     electricity_price = models.PositiveIntegerField(help_text="Giá điện (VND/kWh)")
-    electricity_number_start_reading = models.PositiveIntegerField(
-        help_text="Chỉ số điện bắt đầu tính (kWh)"
-    )
     water_price = models.PositiveIntegerField(help_text="Giá nước")
-    water_number_start_reading = models.PositiveIntegerField(
-        help_text="Chỉ số nước bắt đầu tính (m³)", null=True, blank=True
-    )
     is_water_flat_fee = models.BooleanField(
         default=False, help_text="Có tính phí nước cố định"
     )
@@ -136,8 +153,6 @@ class TenancyService(models.Model):
         if not self.cleaner:
             self.cleaner_price = None
         self.is_water_flat_fee = not self.tenancy.room.has_water_meter
-        if not self.tenancy.room.has_water_meter:
-            self.water_number_start_reading = None
 
     def save(self, *args, **kwargs):
         self._reset_unused_prices()

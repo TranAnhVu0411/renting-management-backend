@@ -12,7 +12,13 @@ from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.contrib.forms.widgets import ArrayWidget, UnfoldAdminSelectWidget
 from unfold.decorators import action
 
-from .models import ServicePriceRule, Tenancy, TenancyTenant, TenancyService
+from .models import (
+    ServicePriceRule,
+    Tenancy,
+    TenancyMeter,
+    TenancyTenant,
+    TenancyService,
+)
 from .services.tenancy import officialize_tenancy
 from properties.models import Room
 from core.widgets import ThousandsInput, LocalizedDateInputWidget
@@ -93,9 +99,16 @@ class TenancyTenantInline(TabularInline):
         js = ("admin/js/tenancy_tenant_inline.js",)
 
 
+class TenancyMeterInline(TabularInline):
+    model = TenancyMeter
+    extra = 0
+    fields = ("meter", "meter_reading")
+    show_change_link = True
+    show_title = False
+
+
 class TenancyServiceInlineForm(forms.ModelForm):
     show_required = (
-        "water_number_start_reading",
         "parking_price",
         "internet_price",
         "laundry_price",
@@ -173,14 +186,6 @@ class TenancyServiceInlineForm(forms.ModelForm):
                     f"{label} price is required.",
                 )
 
-        room = tenancy.room if tenancy and tenancy.room_id else None
-        if room and room.has_water_meter:
-            if cleaned_data.get("water_number_start_reading") is None:
-                self.add_error(
-                    "water_number_start_reading",
-                    "Water number start reading is required.",
-                )
-
         return cleaned_data
 
 
@@ -207,8 +212,8 @@ class TenancyServiceInline(StackedInline):
             {
                 "fields": [
                     "rent_price",
-                    ("electricity_price", "electricity_number_start_reading"),
-                    ("water_price", "water_number_start_reading"),
+                    "electricity_price",
+                    "water_price",
                 ]
             },
         ),
@@ -365,6 +370,7 @@ class TenancyAdmin(ModelAdmin):
     form = TenancyForm
     inlines = [
         TenancyTenantInline,
+        TenancyMeterInline,
         TenancyServiceInline,
     ]
     list_display = (
