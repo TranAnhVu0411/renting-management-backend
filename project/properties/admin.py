@@ -2,10 +2,11 @@ from django import forms
 from django.contrib import admin
 from django.urls import reverse
 from django.shortcuts import redirect
-from unfold.admin import ModelAdmin
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import action
 
-from .models import Room
+from .models import Room, RoomMeter
+from core.widgets import LocalizedDateInputWidget
 
 
 class RoomAdminForm(forms.ModelForm):
@@ -38,23 +39,40 @@ class RoomAdminForm(forms.ModelForm):
         return cleaned_data
 
 
+class RoomMeterInlineForm(forms.ModelForm):
+    class Meta:
+        model = RoomMeter
+        fields = "__all__"
+        localized_fields = ("created_date",)
+        widgets = {name: LocalizedDateInputWidget() for name in localized_fields}
+
+
+class RoomMeterInline(TabularInline):
+    model = RoomMeter
+    form = RoomMeterInlineForm
+    extra = 0
+    fields = ("meter_id", "meter_type", "created_date")
+    show_change_link = True
+    show_title = False
+
+
 @admin.register(Room)
 class RoomAdmin(ModelAdmin):
     list_display = (
         "room_id",
-        "has_water_meter",
         "allow_co_tenant",
         "co_tenant_maximum",
         "area",
         "status",
     )
+    inlines = [RoomMeterInline]
     list_filter = ("status",)
     search_fields = ("room_id",)
     actions_row = ["delete_room_row"]
     form = RoomAdminForm
     conditional_fields = {"co_tenant_maximum": "allow_co_tenant == true"}
     fieldsets = (
-        (None, {"fields": ("room_id", "area", "has_water_meter")}),
+        (None, {"fields": ("room_id", "area")}),
         (
             "Thông tin ở ghép",
             {

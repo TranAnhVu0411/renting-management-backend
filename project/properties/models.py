@@ -33,10 +33,6 @@ class Room(models.Model):
         validators=[MinValueValidator(Decimal("0.01"))],
         help_text="Diện tích phòng (m2)",
     )
-    has_water_meter = models.BooleanField(
-        default=True,
-        help_text="Phòng có đồng hồ nước riêng",
-    )
     status = models.CharField(
         max_length=30,
         choices=Status.choices,
@@ -46,3 +42,31 @@ class Room(models.Model):
 
     def __str__(self):
         return f"{self.room_id}"
+
+
+class RoomMeter(models.Model):
+    class Type(models.TextChoices):
+        WATER = "water", "Nước"
+        ELECTRICITY = "electricity", "Điện"
+
+    class Meta:
+        ordering = ["room_id", "meter_id", "meter_type"]
+        verbose_name_plural = "Room Meters"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    room = models.ForeignKey(
+        Room,
+        on_delete=models.CASCADE,
+        related_name="meters",
+        help_text="Phòng chứa đồng hồ",
+    )
+    meter_id = models.CharField(max_length=150, unique=True, help_text="Mã số đồng hồ")
+    meter_type = models.CharField(
+        max_length=25, help_text="Loại đồng hồ", choices=Type.choices
+    )
+    created_date = models.DateField(
+        help_text="Thời gian lắp đồng hồ", null=True, blank=True, default=None
+    )
+
+    def __str__(self):
+        return f"Room {self.room.room_id} - {self.meter_type} Meter {self.meter_id}"
