@@ -256,9 +256,187 @@
         );
     }
 
+    function initTenancyMeterInline() {
+        const roomInput = document.getElementById("id_room");
+        const table = document.querySelector("#meters-data");
+        const totalForms = document.querySelector(
+            "#id_meters-TOTAL_FORMS"
+        );
+
+        if (!roomInput || !table || !totalForms) {
+            return;
+        }
+
+        const emptyForm = table.querySelector(
+            "tbody.template.empty-form"
+        );
+
+        if (!emptyForm) {
+            console.error("TenancyMeter empty form not found.");
+            return;
+        }
+
+        let requestController = null;
+        let requestSequence = 0;
+
+        /**
+         * Remove all dynamically generated meter forms.
+         *
+         * This implementation is intended for the Add Tenancy form,
+         * where INITIAL_FORMS is 0.
+         */
+        function resetMeterForms() {
+            const forms = table.querySelectorAll(
+                "tbody.form-group:not(.template)"
+            );
+
+            forms.forEach((form) => form.remove());
+
+            totalForms.value = "0";
+        }
+
+        /**
+         * Replace Django's __prefix__ placeholder with
+         * the actual form index.
+         */
+        function replaceFormIndex(element, index) {
+            const elements = [
+                element,
+                ...element.querySelectorAll("*"),
+            ];
+
+            elements.forEach((item) => {
+                Array.from(item.attributes).forEach((attr) => {
+                    if (attr.value.includes("__prefix__")) {
+                        item.setAttribute(
+                            attr.name,
+                            attr.value.replaceAll("__prefix__", index)
+                        );
+                    }
+                });
+            });
+        }
+
+        /**
+         * Create one meter form from Django's empty form.
+         */
+        function addMeterForm(meter, index) {
+            const form = emptyForm.cloneNode(true);
+
+            form.classList.remove("template", "empty-form");
+
+            replaceFormIndex(form, index);
+
+            // Populate meter select.
+            const meterField = form.querySelector(
+                `[name="meters-${index}-meter"]`
+            );
+
+            meterField.innerHTML = "";
+
+            const option = document.createElement("option");
+
+            option.value = meter.id;
+            option.textContent = meter.label;
+
+            option.selected = true;
+
+            meterField.appendChild(option);
+
+            // Make meter select read-only.
+            meterField.setAttribute("tabindex", "-1");
+            meterField.setAttribute("aria-disabled", "true");
+            meterField.classList.add("meter-select-readonly");
+
+            // Reset meter reading.
+            const readingField = form.querySelector(
+                `[name="meters-${index}-meter_reading"]`
+            );
+
+            readingField.value = "";
+
+            // Add form to table.
+            table.querySelector("tfoot").before(form);
+
+            totalForms.value = String(index + 1);
+        }
+
+        /**
+         * Fetch meters belonging to the selected room.
+         */
+        async function fetchRoomMeters(url, signal) {
+            const response = await fetch(url, {
+                method: "GET",
+                credentials: "same-origin",
+                headers: {
+                    Accept: "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+                signal,
+            });
+
+            if (!response.ok) {
+                throw new Error(
+                    `Unable to fetch room meters: ${response.status}`
+                );
+            }
+
+            return response.json();
+        }
+
+        /**
+         * Update meter forms whenever Room changes.
+         */
+        async function updateRoomMeters() {
+            const currentSequence = ++requestSequence;
+
+            if (requestController) {
+                requestController.abort();
+            }
+
+            resetMeterForms();
+            const url = roomInput.selectedOptions[0]?.dataset.roomMetersUrl;
+            if (!url) {
+                return;
+            }
+
+            requestController = new AbortController();
+
+            try {
+                const data = await fetchRoomMeters(
+                    url,
+                    requestController.signal
+                );
+
+                // Ignore outdated responses.
+                if (currentSequence !== requestSequence) {
+                    return;
+                }
+
+                data.forEach((meter, index) => {
+                    addMeterForm(meter, index);
+                });
+
+            } catch (error) {
+                if (error.name === "AbortError") {
+                    return;
+                }
+
+                console.error(error);
+
+                alert(
+                    "Không thể tải danh sách đồng hồ của phòng."
+                );
+            }
+        }
+
+        roomInput.addEventListener("change", updateRoomMeters);
+    }
+
     function init() {
         initRoomConditions();
         initContractDates();
+        initTenancyMeterInline();
     }
 
     if (document.readyState === "loading") {

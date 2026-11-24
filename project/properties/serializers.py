@@ -14,10 +14,16 @@ class RoomConditionsSerializer(serializers.ModelSerializer):
 
 
 class RoomMetersSerializer(serializers.ModelSerializer):
+    label = serializers.SerializerMethodField()
+
     class Meta:
         model = RoomMeter
-        fields = (
+        fields = [
             "id",
-            "meter_type",
             "meter_id",
-        )
+            "meter_type",
+            "label",
+        ]
+
+    def get_label(self, obj):
+        return str(obj)

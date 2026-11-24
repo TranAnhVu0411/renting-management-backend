@@ -20,7 +20,7 @@ from .models import (
     TenancyService,
 )
 from .services.tenancy import officialize_tenancy
-from properties.models import Room
+from properties.models import Room, RoomMeter
 from core.widgets import ThousandsInput, LocalizedDateInputWidget
 
 
@@ -99,12 +99,25 @@ class TenancyTenantInline(TabularInline):
         js = ("admin/js/tenancy_tenant_inline.js",)
 
 
+class TenancyMeterInlineForm(forms.ModelForm):
+    class Meta:
+        model = TenancyMeter
+        fields = ["meter", "meter_reading"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.fields["meter"].queryset = RoomMeter.objects.all()
+
+
 class TenancyMeterInline(TabularInline):
     model = TenancyMeter
+    form = TenancyMeterInlineForm
     extra = 0
-    fields = ("meter", "meter_reading")
-    show_change_link = True
-    show_title = False
+    fields = ["meter", "meter_reading"]
+
+    class Media:
+        css = {"all": ("admin/css/tenancy_meter_inline.css",)}
 
 
 class TenancyServiceInlineForm(forms.ModelForm):
@@ -330,8 +343,10 @@ class RoomSelectWidget(UnfoldAdminSelectWidget):
         )
 
         room = getattr(value, "instance", None)
-
         if room:
+            option["attrs"]["data-room-meters-url"] = reverse(
+                "properties:room-meters", kwargs={"pk": room.pk}
+            )
             option["attrs"]["data-has-water-meter"] = str(room.has_water_meter).lower()
 
         return option

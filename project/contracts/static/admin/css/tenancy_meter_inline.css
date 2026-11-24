@@ -1,0 +1,15 @@
+/* Make add/delete tenancy meter inline buttons disappear */
+#meters-data tfoot {
+    display: none !important;
+}
+
+#meters-data th.column-delete,
+#meters-data td.delete {
+    display: none !important;
+}
+
+/* Make meter select read-only */
+#meters-data .meter-select-readonly {
+    pointer-events: none;
+    cursor: default;
+}
