@@ -262,6 +262,9 @@
         const totalForms = document.querySelector(
             "#id_meters-TOTAL_FORMS"
         );
+        const initialForms = document.querySelector(
+            "#id_meters-INITIAL_FORMS"
+        );
 
         if (!roomInput || !table || !totalForms) {
             return;
@@ -371,10 +374,17 @@
         let requestSequence = 0;
 
         /**
-         * Remove all dynamically generated meter forms.
+         * Remove all existing meter forms and reset the formset management data.
          *
-         * This implementation is intended for the Add Tenancy form,
-         * where INITIAL_FORMS is 0.
+         * This is used when:
+         * - Adding a new Tenancy and initializing its meter forms.
+         * - Changing the Room of an existing draft Tenancy, where all previous
+         *   meter forms are replaced with newly generated forms.
+         *
+         * Resetting INITIAL_FORMS to 0 tells Django to treat all subsequently
+         * generated meter forms as new records rather than existing instances.
+         * The backend uses this value to identify the replacement scenario and
+         * delete the old TenancyMeter records before saving the new ones.
          */
         function resetMeterForms() {
             const forms = table.querySelectorAll(
@@ -384,6 +394,7 @@
             forms.forEach((form) => form.remove());
 
             totalForms.value = "0";
+            initialForms.value = "0";
         }
 
         /**

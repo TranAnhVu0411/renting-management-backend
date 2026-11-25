@@ -485,6 +485,30 @@ class TenancyAdmin(ModelAdmin):
             }
         )
 
+    def save_formset(self, request, form, formset, change):
+        if formset.model is TenancyMeter and change:
+            # When the selected Room changes, JavaScript replaces all meter forms
+            # with new extra forms and resets INITIAL_FORMS to 0.
+            #
+            # Django therefore treats these forms as entirely new records and
+            # does not automatically delete the existing TenancyMeter records.
+            # Delete the old records first so that only meters belonging to the
+            # newly selected Room remain after saving.
+            #
+            # If the Room has not changed, INITIAL_FORMS retains its original
+            # value, allowing Django to update existing meter readings normally.
+            if formset.initial_form_count() == 0:
+                TenancyMeter.objects.filter(tenancy=form.instance).delete()
+
+        # Let Django handle the normal formset save process, including creating
+        # the replacement TenancyMeter records when the Room has changed.
+        super().save_formset(
+            request,
+            form,
+            formset,
+            change,
+        )
+
     actions_submit_line = ["changeform_officialize_tenancy_action"]
 
     @action(
