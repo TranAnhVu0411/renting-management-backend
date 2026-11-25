@@ -334,6 +334,39 @@
             table.hidden = false;
         }
 
+        /**
+         * Check if there are any meter forms rendered.
+         */
+        function hasMeterForms() {
+            const forms = table.querySelectorAll(
+                "tbody.form-group:not(.template)"
+            );
+            return forms.length > 0;
+        }
+
+        /**
+         * Initialize the placeholder for meters information.
+         */
+        function initializeMeterInline() {
+            if (hasMeterForms()) {
+                // Django already rendered existing or submitted meter forms.
+                hidePlaceholder();
+                return;
+            }
+
+            if (roomInput.value) {
+                // Room is selected but no meter forms are rendered.
+                updateRoomMeters();
+                return;
+            }
+
+            showPlaceholder({
+                title: "Chưa có thông tin đồng hồ",
+                description:
+                    "Vui lòng chọn phòng để hiển thị danh sách đồng hồ đo điện và nước của phòng.",
+            });
+        }
+
         let requestController = null;
         let requestSequence = 0;
 
@@ -511,6 +544,7 @@
         }
 
         roomInput.addEventListener("change", updateRoomMeters);
+        initializeMeterInline();
     }
 
     function init() {

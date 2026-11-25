@@ -115,6 +115,8 @@ class TenancyMeterInline(TabularInline):
     form = TenancyMeterInlineForm
     extra = 0
     fields = ["meter", "meter_reading"]
+    show_change_link = True
+    show_title = False
 
     class Media:
         css = {"all": ("admin/css/tenancy_meter_inline.css",)}
