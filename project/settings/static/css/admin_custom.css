@@ -21,3 +21,10 @@
         flex-direction: row;
     }
 }
+
+/* Keep TabularInline table headers visible on smaller screens */
+@media (max-width: 1024px) {
+    .tabular.inline-related .formset-wrapper table.formset thead {
+        display: table-header-group !important;
+    }
+}
