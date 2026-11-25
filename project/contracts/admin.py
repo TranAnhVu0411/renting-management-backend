@@ -110,9 +110,59 @@ class TenancyMeterInlineForm(forms.ModelForm):
         self.fields["meter"].queryset = RoomMeter.objects.all()
 
 
+class TenancyMeterInlineFormSet(forms.models.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+
+        if any(self.errors):
+            return
+
+        room_id = self.data.get("room")
+        if not room_id:
+            room_id = getattr(self.instance, "room_id", None)
+        try:
+            room = Room.objects.get(pk=room_id)
+        except (Room.DoesNotExist, ValueError, TypeError):
+            return
+
+        room_meters = RoomMeter.objects.filter(room=room)
+        seen_meter_ids = set()
+
+        for form in self.forms:
+            if self.can_delete and self._should_delete_form(form):
+                continue
+            if not form.cleaned_data:
+                continue
+
+            data = form.cleaned_data
+            meter = data.get("meter")
+            if not meter:
+                continue
+
+            if meter not in room_meters:
+                form.add_error(
+                    "meter",
+                    ValidationError("This meter does not belong to the selected room."),
+                )
+            else:
+                if meter.pk in seen_meter_ids:
+                    form.add_error(
+                        "meter",
+                        ValidationError(
+                            "This meter has already been selected " "in another line."
+                        ),
+                    )
+                else:
+                    seen_meter_ids.add(meter.pk)
+
+        if len(seen_meter_ids) < len(room_meters):
+            raise ValidationError("All room meters must be assigned to the tenancy.")
+
+
 class TenancyMeterInline(TabularInline):
     model = TenancyMeter
     form = TenancyMeterInlineForm
+    formset = TenancyMeterInlineFormSet
     extra = 0
     fields = ["meter", "meter_reading"]
     show_change_link = True
