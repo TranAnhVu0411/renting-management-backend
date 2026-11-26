@@ -423,6 +423,38 @@
         }
 
         /**
+         * Make the meter select field read-only by disabling user interaction.
+         * This is done by setting tabindex to -1, adding aria-disabled attribute,
+         * and applying a CSS class to visually indicate the read-only state.
+         */
+        function makeMeterFieldReadonly(form) {
+            const meterField = form.querySelector(
+                'select[name$="-meter"]'
+            );
+
+            if (!meterField) {
+                return;
+            }
+
+            meterField.setAttribute("tabindex", "-1");
+            meterField.setAttribute("aria-disabled", "true");
+            meterField.classList.add("meter-select-readonly");
+        }
+
+        /**
+         * Apply read-only state to all existing meter forms in the table.
+         */
+        function applyMeterReadonly() {
+            table.querySelectorAll("tbody").forEach((form) => {
+                if (form === emptyForm) {
+                    return;
+                }
+
+                makeMeterFieldReadonly(form);
+            });
+        }
+
+        /**
          * Create one meter form from Django's empty form.
          */
         function addMeterForm(meter, index) {
@@ -449,9 +481,7 @@
             meterField.appendChild(option);
 
             // Make meter select read-only.
-            meterField.setAttribute("tabindex", "-1");
-            meterField.setAttribute("aria-disabled", "true");
-            meterField.classList.add("meter-select-readonly");
+            makeMeterFieldReadonly(form);
 
             // Reset meter reading.
             const readingField = form.querySelector(
@@ -559,6 +589,7 @@
 
         roomInput.addEventListener("change", updateRoomMeters);
         // initializeMeterInline();
+        applyMeterReadonly();
     }
 
     function init() {
