@@ -278,97 +278,43 @@
             console.error("TenancyMeter empty form not found.");
             return;
         }
+
+        const placeholder = document.querySelector(
+            "#meters-placeholder"
+        );
+
+        const placeholderTitle = document.querySelector(
+            "#meters-placeholder-title"
+        );
+
+        const placeholderDescription = document.querySelector(
+            "#meters-placeholder-description"
+        );
         
-        // // Insert placeholder for meters information when no room is selected.
-        // const placeholder = document.createElement("div");
-        // placeholder.id = "meters-placeholder";
-        // placeholder.className = `
-        //     flex flex-col items-center justify-center
-        //     rounded-lg border border-dashed border-base-300
-        //     bg-base-50 dark:bg-base-900
-        //     px-6 py-10 text-center
-        // `;
+        function showPlaceholder(title, description) {
+            placeholder.hidden = false;
+            placeholder.classList.remove("hidden");
 
-        // placeholder.innerHTML = `
-        //     <div class="
-        //         flex items-center justify-center
-        //         w-12 h-12 rounded-xl
-        //         bg-base-100 dark:bg-base-800
-        //         text-base-500 dark:text-base-400
-        //         mb-4 meter-placeholder
-        //     ">
-        //         <span class="material-symbols-outlined p-2 text-4xl">
-        //             gas_meter
-        //         </span>
-        //     </div>
+            placeholderTitle.textContent = title;
+            placeholderDescription.textContent = description;
+        }
 
-        //     <h3 class="
-        //         text-sm font-semibold
-        //         text-font-default-light dark:text-font-default-dark
-        //         mb-1
-        //     ">
-        //         Chưa có thông tin đồng hồ
-        //     </h3>
+        function hidePlaceholder() {
+            placeholder.hidden = true;
+            placeholder.classList.add("hidden");
+        }
 
-        //     <p class="
-        //         max-w-md text-sm
-        //         text-font-subtle-light dark:text-font-subtle-dark
-        //     ">
-        //         Vui lòng chọn phòng để hiển thị danh sách
-        //         đồng hồ đo điện và nước của phòng.
-        //     </p>
-        // `;
-        // table.parentElement.insertBefore(placeholder, table);
+        function initializePlaceholder() {
+            if (!roomInput.value) {
+                showPlaceholder(
+                    "Chưa có thông tin đồng hồ",
+                    "Vui lòng chọn phòng để hiển thị danh sách đồng hồ đo điện và nước của phòng."
+                );
+                return;
+            }
 
-        // /**
-        //  * Update the placeholder message for meters information.
-        //  */
-        // function showPlaceholder({title, description,}) {
-        //     placeholder.classList.remove("hidden");
-
-        //     placeholder.querySelector("h3").textContent = title;
-        //     placeholder.querySelector("p").textContent = description;
-
-        //     table.hidden = true;
-        // }
-
-        // function hidePlaceholder() {
-        //     placeholder.classList.add("hidden");
-        //     table.hidden = false;
-        // }
-
-        // /**
-        //  * Check if there are any meter forms rendered.
-        //  */
-        // function hasMeterForms() {
-        //     const forms = table.querySelectorAll(
-        //         "tbody.form-group:not(.template)"
-        //     );
-        //     return forms.length > 0;
-        // }
-
-        // /**
-        //  * Initialize the placeholder for meters information.
-        //  */
-        // function initializeMeterInline() {
-        //     if (hasMeterForms()) {
-        //         // Django already rendered existing or submitted meter forms.
-        //         hidePlaceholder();
-        //         return;
-        //     }
-
-        //     if (roomInput.value) {
-        //         // Room is selected but no meter forms are rendered.
-        //         updateRoomMeters();
-        //         return;
-        //     }
-
-        //     showPlaceholder({
-        //         title: "Chưa có thông tin đồng hồ",
-        //         description:
-        //             "Vui lòng chọn phòng để hiển thị danh sách đồng hồ đo điện và nước của phòng.",
-        //     });
-        // }
+            hidePlaceholder();
+        }
 
         let requestController = null;
         let requestSequence = 0;
@@ -532,19 +478,17 @@
             resetMeterForms();
             const url = roomInput.selectedOptions[0]?.dataset.roomMetersUrl;
             if (!url) {
-                // showPlaceholder({
-                //     title: "Chưa có thông tin đồng hồ",
-                //     description:
-                //         "Vui lòng chọn phòng để hiển thị danh sách đồng hồ đo điện và nước của phòng.",
-                // });
+                showPlaceholder(
+                    "Chưa có thông tin đồng hồ",
+                    "Vui lòng chọn phòng để hiển thị danh sách đồng hồ đo điện và nước của phòng."
+                );
                 return;
             }
 
-            // showPlaceholder({
-            //     title: "Đang tải thông tin đồng hồ",
-            //     description:
-            //         "Vui lòng đợi trong giây lát.",
-            // });
+            showPlaceholder(
+                "Đang tải thông tin đồng hồ",
+                "Đang tải danh sách đồng hồ của phòng được chọn..."
+            );
 
             requestController = new AbortController();
 
@@ -560,12 +504,11 @@
                 }
 
                 if (data.length === 0) {
-                    // showPlaceholder({
-                    //     title: "Phòng chưa có đồng hồ",
-                    //     description:
-                    //         "Phòng này chưa được thiết lập đồng hồ đo. Bạn cần thêm đồng hồ cho phòng trước khi tạo hợp đồng.",
-                    // });
-                    // return;
+                    showPlaceholder(
+                        "Phòng chưa có đồng hồ",
+                        "Phòng này chưa được thiết lập đồng hồ đo. Bạn cần thêm đồng hồ cho phòng trước khi tạo hợp đồng."
+                    );
+                    return;
                 }
 
                 data.forEach((meter, index) => {
@@ -579,16 +522,15 @@
 
                 console.error(error);
 
-                // showPlaceholder({
-                //     title: "Không thể tải thông tin đồng hồ",
-                //     description:
-                //         "Đã xảy ra lỗi khi tải dữ liệu. Vui lòng thử chọn lại phòng.",
-                // });
+                showPlaceholder(
+                    "Không thể tải thông tin đồng hồ",
+                    "Đã xảy ra lỗi khi tải danh sách đồng hồ. Vui lòng thử chọn lại phòng."
+                );
             }
         }
 
         roomInput.addEventListener("change", updateRoomMeters);
-        // initializeMeterInline();
+        initializePlaceholder();
         applyMeterReadonly();
     }
 

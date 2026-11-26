@@ -168,6 +168,8 @@ class TenancyMeterInline(TabularInline):
     show_change_link = True
     show_title = False
 
+    template_before = "admin/tenancy/tenancy_meter_placeholder.html"
+
     class Media:
         css = {"all": ("admin/css/tenancy_meter_inline.css",)}
 
